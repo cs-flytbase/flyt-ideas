@@ -1,7 +1,7 @@
 # Home Page UI Documentation
 
 ## Overview
-The home page serves as the landing page for the "Reddit at Home" platform, featuring a modern and clean UI with a gradient background.
+The home page serves as the landing page for the "FlytIdeas" platform, featuring a modern and clean UI with a gradient background.
 
 ## UI Components
 

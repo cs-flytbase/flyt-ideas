@@ -1,6 +1,6 @@
-# Reddit at Home - Database Schema Documentation
+# FlytIdeas - Database Schema Documentation
 
-This document outlines the database schema for the Reddit at Home collaborative platform, with a particular focus on ideas and implementation checklists.
+This document outlines the database schema for the FlytIdeas collaborative platform, with a particular focus on ideas and implementation checklists.
 
 ## Core Entities
 

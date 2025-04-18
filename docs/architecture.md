@@ -1,6 +1,6 @@
-# Reddit at Home - Architecture Overview
+# FlytIdeas - Architecture Overview
 
-This document outlines the architecture of the Reddit at Home platform, focusing on how the database schema integrates with the frontend components.
+This document outlines the architecture of the FlytIdeas platform, focusing on how the database schema integrates with the frontend components.
 
 ## Tech Stack
 

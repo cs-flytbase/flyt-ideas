@@ -1,7 +1,7 @@
 # Dashboard Page UI Documentation
 
 ## Overview
-The dashboard serves as the central hub for the "Reddit at Home" collaboration platform. It features a modern, Notion-inspired interface with a focus on idea management, collaboration, and task tracking.
+The dashboard serves as the central hub for the "FlytIdeas" collaboration platform. It features a modern, Notion-inspired interface with a focus on idea management, collaboration, and task tracking.
 
 ## UI Components
 

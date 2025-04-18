@@ -71,11 +71,11 @@ export async function GET(
         id: comment.id,
         content: comment.content,
         createdAt: comment.created_at,
-        user: comment.users
+        user: comment.users?.[0]
           ? {
-              id: comment.users.id,
-              name: comment.users.display_name || 'Anonymous',
-              avatarUrl: comment.users.avatar_url || '',
+              id: comment.users[0].id,
+              name: comment.users[0].display_name || 'Anonymous',
+              avatarUrl: comment.users[0].avatar_url || '',
             }
           : {
               id: comment.user_id,

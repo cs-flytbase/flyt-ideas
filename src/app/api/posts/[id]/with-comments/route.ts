@@ -1,14 +1,14 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
 // GET: Fetch a single post with comments in one request
 export async function GET(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   try {
-    const { id } = context.params;
+    const { id } = await params;
     const session = await auth();
     const userId = session?.userId;
 
@@ -25,11 +25,10 @@ export async function GET(
       `)
       .eq('id', id);
 
-    // If user is not logged in, only allow viewing public posts
+    // Restrict based on authentication
     if (!userId) {
       query = query.eq('is_public', true);
     } else {
-      // If user is logged in, they can view their own posts or public posts
       query = query.or(`is_public.eq.true,creator_id.eq.${userId}`);
     }
 
@@ -42,7 +41,7 @@ export async function GET(
       throw postError;
     }
 
-    // Get comments for this post with authors in a single query (efficient)
+    // Fetch post comments and authors
     const { data: comments, error: commentsError } = await supabase
       .from('post_comments')
       .select(`
@@ -56,25 +55,19 @@ export async function GET(
       throw commentsError;
     }
 
-    // Process comments - ensure every comment has author info
-    const processedComments = comments.map(comment => {
-      if (!comment.author) {
-        return {
-          ...comment,
-          author: {
-            id: comment.user_id,
-            display_name: 'Anonymous',
-            avatar_url: ''
-          }
-        };
-      }
-      return comment;
-    });
+    // Fallback for missing author data
+    const processedComments = (comments || []).map(comment => ({
+      ...comment,
+      author: comment.author ?? {
+        id: comment.user_id,
+        display_name: 'Anonymous',
+        avatar_url: '',
+      },
+    }));
 
-    // Return both post and comments in a single response
     return NextResponse.json({
       post,
-      comments: processedComments
+      comments: processedComments,
     });
   } catch (error) {
     console.error('Error fetching post with comments:', error);

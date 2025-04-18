@@ -6,11 +6,11 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 // POST handler for adding a user as a power user for a tool
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Use headers to get the user ID - simpler approach that works with App Router
   const userId = request.headers.get('x-clerk-user-id');
-  const { id: toolId } = await Promise.resolve(params);
+  const { id: toolId } = await params;
   
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized - No user ID found' }, { status: 401 });
@@ -78,11 +78,11 @@ export async function POST(
 // DELETE handler for removing a user as a power user for a tool
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Use headers to get the user ID - simpler approach that works with App Router
   const userId = request.headers.get('x-clerk-user-id');
-  const { id: toolId } = await Promise.resolve(params);
+  const { id: toolId } = await params;
   
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized - No user ID found' }, { status: 401 });

@@ -15,7 +15,7 @@ export async function GET(
   try {
     const supabase = await createClient();
 
-    // Check tool existence
+    // Check if tool exists
     const { data: toolExists, error: checkError } = await supabase
       .from('tools')
       .select('id')
@@ -49,7 +49,6 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch tool details' }, { status: 500 });
     }
 
-    // Get profile data for power users
     const userIds = tool.power_users?.map((pu: any) => pu.user_id) || [];
 
     const { data: users, error: userError } = await supabase

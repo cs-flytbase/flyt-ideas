@@ -1,57 +1,48 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// POST: Add a new checklist item
+// Utility to check user access to modify a checklist
+async function canUserModifyChecklist(checklistId: string, userId: string) {
+  const { data: checklist, error: checklistError } = await supabase
+    .from('checklists')
+    .select('*, ideas:idea_id(id, creator_id)')
+    .eq('id', checklistId)
+    .single();
+
+  if (checklistError) throw checklistError;
+
+  const isCreator = checklist.creator_id === userId;
+
+  const { data: assignment, error: assignmentError } = await supabase
+    .from('idea_assignments')
+    .select('*')
+    .eq('idea_id', checklist.idea_id)
+    .eq('user_id', userId)
+    .single();
+
+  const isAssigned = !assignmentError && assignment;
+  const canModify = isCreator || (isAssigned && checklist.is_shared);
+
+  return { canModify, checklist, isCreator };
+}
+
+// POST: Add new checklist item
 export async function POST(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   const session = await auth();
   const userId = session?.userId;
-  const checklistId = context.params.id;
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { id: checklistId } = await params;
 
-  if (!checklistId) {
-    return NextResponse.json({ error: 'Checklist ID is required' }, { status: 400 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    // Verify that the user is authorized to add items to this checklist
-    // User must either own the checklist or be assigned to the idea
-    const { data: checklist, error: checklistError } = await supabase
-      .from('checklists')
-      .select('*, ideas:idea_id(id, creator_id)')
-      .eq('id', checklistId)
-      .single();
-
-    if (checklistError) {
-      throw checklistError;
-    }
-
-    const isCreator = checklist.creator_id === userId;
-    
-    // Check if user is assigned to the idea
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('idea_assignments')
-      .select('*')
-      .eq('idea_id', checklist.idea_id)
-      .eq('user_id', userId)
-      .single();
-
-    const isAssigned = !assignmentError && assignment;
-
-    // Check if shared checklist (anyone assigned can modify)
-    const canModify = isCreator || (isAssigned && checklist.is_shared);
+    const { canModify } = await canUserModifyChecklist(checklistId, userId);
 
     if (!canModify) {
-      return NextResponse.json(
-        { error: 'You are not authorized to add items to this checklist' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Not authorized to add items' }, { status: 403 });
     }
 
     const { text, position } = await request.json();
@@ -60,235 +51,128 @@ export async function POST(
       return NextResponse.json({ error: 'Item text is required' }, { status: 400 });
     }
 
-    // Get the max position in the current checklist
-    const { data: positionData, error: positionError } = await supabase
+    const { data: positionData } = await supabase
       .from('checklist_items')
       .select('position')
       .eq('checklist_id', checklistId)
       .order('position', { ascending: false })
       .limit(1);
 
-    if (positionError) {
-      throw positionError;
-    }
+    const nextPosition = positionData?.[0]?.position + 1 || 0;
 
-    // Calculate the next position (max + 1, or 0 if no items exist)
-    const nextPosition = positionData && positionData.length > 0
-      ? (positionData[0].position + 1)
-      : 0;
-
-    // Insert the checklist item
     const { data: item, error: itemError } = await supabase
       .from('checklist_items')
-      .insert([
-        {
-          checklist_id: checklistId,
-          text,
-          position: position !== undefined ? position : nextPosition,
-          created_by: userId
-        }
-      ])
+      .insert([{
+        checklist_id: checklistId,
+        text,
+        position: position ?? nextPosition,
+        created_by: userId,
+      }])
       .select()
       .single();
 
-    if (itemError) {
-      throw itemError;
-    }
+    if (itemError) throw itemError;
 
     return NextResponse.json(item);
   } catch (error) {
-    console.error('Error adding checklist item:', error);
+    console.error('POST error:', error);
     return NextResponse.json({ error: 'Failed to add checklist item' }, { status: 500 });
   }
 }
 
-// PUT: Update a checklist item (toggle completion, edit text, etc.)
+// PUT: Update checklist item
 export async function PUT(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   const session = await auth();
   const userId = session?.userId;
-  const checklistId = context.params.id;
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { id: checklistId } = await params;
 
-  if (!checklistId) {
-    return NextResponse.json({ error: 'Checklist ID is required' }, { status: 400 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { itemId, completed, text, position } = await request.json();
-
-    if (!itemId) {
-      return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
-    }
-
-    // Verify that the user is authorized to update items in this checklist
-    const { data: checklist, error: checklistError } = await supabase
-      .from('checklists')
-      .select('*, ideas:idea_id(id, creator_id)')
-      .eq('id', checklistId)
-      .single();
-
-    if (checklistError) {
-      throw checklistError;
-    }
-
-    const isCreator = checklist.creator_id === userId;
-    
-    // Check if user is assigned to the idea
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('idea_assignments')
-      .select('*')
-      .eq('idea_id', checklist.idea_id)
-      .eq('user_id', userId)
-      .single();
-
-    const isAssigned = !assignmentError && assignment;
-
-    // Check if shared checklist (anyone assigned can modify)
-    const canModify = isCreator || (isAssigned && checklist.is_shared);
+    const { canModify } = await canUserModifyChecklist(checklistId, userId);
 
     if (!canModify) {
-      return NextResponse.json(
-        { error: 'You are not authorized to update items in this checklist' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Not authorized to update items' }, { status: 403 });
     }
 
-    // Update properties based on what was provided
-    const updateData: any = {};
-    
-    if (text !== undefined) {
-      updateData.text = text;
-    }
-    
-    if (position !== undefined) {
-      updateData.position = position;
-    }
-    
+    const { itemId, completed, text, position } = await request.json();
+
+    if (!itemId) return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
+
+    const updateData: any = { };
+    if (text !== undefined) updateData.text = text;
+    if (position !== undefined) updateData.position = position;
     if (completed !== undefined) {
       updateData.completed = completed;
-      
-      if (completed) {
-        updateData.completed_by = userId;
-        updateData.completed_at = new Date().toISOString();
-      } else {
-        updateData.completed_by = null;
-        updateData.completed_at = null;
-      }
+      updateData.completed_by = completed ? userId : null;
+      updateData.completed_at = completed ? new Date().toISOString() : null;
     }
 
-    // Update the checklist item
     const { data: item, error: itemError } = await supabase
       .from('checklist_items')
       .update(updateData)
       .eq('id', itemId)
       .eq('checklist_id', checklistId)
-      .select(`
-        *,
-        completed_by_user:completed_by(display_name, avatar_url)
-      `)
+      .select(`*, completed_by_user:completed_by(display_name, avatar_url)`)
       .single();
 
-    if (itemError) {
-      throw itemError;
-    }
+    if (itemError) throw itemError;
 
     return NextResponse.json(item);
   } catch (error) {
-    console.error('Error updating checklist item:', error);
+    console.error('PUT error:', error);
     return NextResponse.json({ error: 'Failed to update checklist item' }, { status: 500 });
   }
 }
 
-// DELETE: Remove a checklist item
+// DELETE: Remove checklist item
 export async function DELETE(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   const session = await auth();
   const userId = session?.userId;
-  const checklistId = context.params.id;
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { id: checklistId } = await params;
 
-  if (!checklistId) {
-    return NextResponse.json({ error: 'Checklist ID is required' }, { status: 400 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const url = new URL(request.url);
-  const itemId = url.searchParams.get('itemId');
+  const itemId = new URL(request.url).searchParams.get('itemId');
 
-  if (!itemId) {
-    return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
-  }
+  if (!itemId) return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
 
   try {
-    // Verify that the user is authorized to delete items from this checklist
-    const { data: checklist, error: checklistError } = await supabase
-      .from('checklists')
-      .select('*, ideas:idea_id(id, creator_id)')
-      .eq('id', checklistId)
-      .single();
+    const { canModify, checklist, isCreator } = await canUserModifyChecklist(checklistId, userId);
 
-    if (checklistError) {
-      throw checklistError;
-    }
-
-    const isCreator = checklist.creator_id === userId;
-    
-    // Check if user is assigned to the idea
-    const { data: assignment, error: assignmentError } = await supabase
-      .from('idea_assignments')
-      .select('*')
-      .eq('idea_id', checklist.idea_id)
-      .eq('user_id', userId)
-      .single();
-
-    const isAssigned = !assignmentError && assignment;
-
-    // Only creator of the checklist or owner of the item can delete it
-    const { data: item, error: itemFetchError } = await supabase
+    const { data: item, error: fetchError } = await supabase
       .from('checklist_items')
       .select('created_by')
       .eq('id', itemId)
       .eq('checklist_id', checklistId)
       .single();
 
-    if (itemFetchError) {
-      throw itemFetchError;
-    }
+    if (fetchError) throw fetchError;
 
     const isItemCreator = item.created_by === userId;
-    const canDelete = isCreator || isItemCreator || (isAssigned && checklist.is_shared);
+    const canDelete = isCreator || isItemCreator || (canModify && checklist.is_shared);
 
     if (!canDelete) {
-      return NextResponse.json(
-        { error: 'You are not authorized to delete items from this checklist' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Not authorized to delete this item' }, { status: 403 });
     }
 
-    // Delete the checklist item
     const { error: deleteError } = await supabase
       .from('checklist_items')
       .delete()
       .eq('id', itemId)
       .eq('checklist_id', checklistId);
 
-    if (deleteError) {
-      throw deleteError;
-    }
+    if (deleteError) throw deleteError;
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting checklist item:', error);
+    console.error('DELETE error:', error);
     return NextResponse.json({ error: 'Failed to delete checklist item' }, { status: 500 });
   }
 }

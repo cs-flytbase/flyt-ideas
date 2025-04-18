@@ -8,6 +8,40 @@ Reddit at Home is a collaborative platform for idea sharing, project management,
 - Discover, upvote, and recommend tools, with AI-powered suggestions
 
 ## Tech Stack
+
+---
+
+## ⚠️ Next.js 15 Route Handler Change
+
+**In Next.js 15, the `params` argument passed to API route handlers is now a Promise.**
+
+### What Changed?
+- You must now type your handler as `{ params: Promise<Record<string, string>> }` (or similar).
+- You **must** `await` the params inside your handler.
+
+### Example
+```typescript
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  // ...rest of your code
+}
+```
+
+### If you do not use Promise params, you will get this error:
+
+```
+Type error: Route "src/app/api/checklists/[id]/items/route.ts" has an invalid "POST" export:
+  Type "{ params: { id: string; }; }" is not a valid type for the function's second argument.
+Next.js build worker exited with code: 1 and signal: null
+Error: Command "npm run build" exited with 1
+```
+
+See the [Next.js docs](https://nextjs.org/docs/app/building-your-application/routing/route-handlers#context-params) for reference.
+
+---
 - **Frontend:** Next.js 14+ (App Router, TypeScript)
 - **Styling:** Tailwind CSS, ShadCN UI
 - **Font:** Geist Sans

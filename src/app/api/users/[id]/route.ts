@@ -1,51 +1,49 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
-// GET: Fetch user details from Supabase by user ID
+// GET: Fetch user details by ID
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
-) {
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   try {
-    // Await the params object
-    const { id } = await context.params;
-    
+    const { id } = await params;
+
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
-    
-    // Get user data from Supabase
-    const { data: userData, error } = await supabase
+
+    // Fetch user from Supabase
+    const { data: user, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, display_name, avatar_url, email, created_at')
       .eq('id', id)
       .single();
-    
-    if (error || !userData) {
-      // If user not found in database, return basic placeholder data
+
+    if (error || !user) {
+      // If user not found or error occurred, return fallback
       return NextResponse.json({
         id,
         display_name: 'Anonymous',
         avatar_url: '',
       });
     }
-    
-    // Return user data
+
     return NextResponse.json({
-      id: userData.id,
-      display_name: userData.display_name || 'Anonymous',
-      avatar_url: userData.avatar_url || '',
-      email: userData.email || '',
-      created_at: userData.created_at
+      id: user.id,
+      display_name: user.display_name || 'Anonymous',
+      avatar_url: user.avatar_url || '',
+      email: user.email || '',
+      created_at: user.created_at || null,
     });
   } catch (error) {
     console.error('Error fetching user details:', error);
-    // Return a basic user object if there's an error
-    return NextResponse.json({ 
-      id: context.params.id,
+
+    // Return safe fallback response
+    return NextResponse.json({
+      id: (await params).id,
       display_name: 'Anonymous',
-      avatar_url: '' 
+      avatar_url: '',
     });
   }
 }

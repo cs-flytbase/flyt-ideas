@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   // Await params access
-  const resolvedParams = await Promise.resolve(params);
-  const requestId = resolvedParams.id;
+  const { id: requestId } = await params;
   
   const session = await auth();
   const userId = session?.userId;

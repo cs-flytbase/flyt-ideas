@@ -194,37 +194,55 @@ export default function ToolDetailPage() {
     try {
       setIsTogglingPowerUser(true);
       
+      // Log for debugging
+      console.log('Sending power user request for tool:', id, 'and user:', user.id);
+      
       const response = await fetch(`/api/tools/${id}/power-users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ expertise_level: expertiseLevel })
+        // Simplify the request body - remove expertise_level as it's not in the schema
+        body: JSON.stringify({})
       });
       
+      // Parse the JSON response instead of getting text
+      const responseData = await response.json();
+      console.log('Power user API response:', responseData);
+      
       if (!response.ok) {
-        throw new Error('Failed to add as power user');
+        // Include any details from the API in the error message
+        const errorMessage = responseData.error || 'Unknown error';
+        const details = responseData.details ? JSON.stringify(responseData.details) : '';
+        throw new Error(`Failed to add as power user: ${errorMessage} ${details}`);
       }
       
       // Get updated tool data
       const toolResponse = await fetch(`/api/tools/${id}`);
-      const updatedTool = await toolResponse.json();
       
-      // Add the icon component
-      const toolWithIcon = {
-        ...updatedTool,
-        icon: toolIcons[updatedTool.icon_name as keyof typeof toolIcons],
-      };
+      if (!toolResponse.ok) {
+        console.error('Failed to fetch updated tool data');
+        // Continue anyway - we'll just mark the user as a power user without refreshing tool data
+      } else {
+        const updatedTool = await toolResponse.json();
       
-      setTool(toolWithIcon);
+        // Add the icon component
+        const toolWithIcon = {
+          ...updatedTool,
+          icon: toolIcons[updatedTool.icon_name as keyof typeof toolIcons],
+        };
+        
+        setTool(toolWithIcon);
+      }
       setIsPowerUser(true);
       setConfirmDialogOpen(false);
       
       toast.success("You are now a power user for this tool!");
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding power user status:', error);
-      toast.error("Failed to add power user status");
+      console.log('Full error details:', error);
+      toast.error(`Failed to add power user status: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsTogglingPowerUser(false);
     }

@@ -55,15 +55,14 @@ export async function GET(
     if (!data) {
       return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
     }
-    
-    // Process power users to get user profiles in a separate query
+    // Process power users to get user profiles from the users table
     if (data.power_users && data.power_users.length > 0) {
       // Extract all user_ids from power_users
       const userIds = data.power_users.map((pu: any) => pu.user_id);
       
-      // Fetch user profiles
+      // Fetch user information from the users table (not profiles)
       const { data: userProfiles, error: profilesError } = await supabase
-        .from('profiles')
+        .from('users')
         .select('id, display_name, avatar_url')
         .in('id', userIds);
       
@@ -77,10 +76,23 @@ export async function GET(
         // Enhance power_users with user profile information
         data.power_users = data.power_users.map((powerUser: any) => ({
           ...powerUser,
-          user: profileMap[powerUser.user_id] || null
+          user: profileMap[powerUser.user_id] || {
+            id: powerUser.user_id,
+            display_name: `User ${powerUser.user_id.substring(0, 6)}`,
+            avatar_url: null
+          }
         }));
       } else {
         console.error('Error fetching user profiles:', profilesError);
+        // Add fallback user data if we couldn't fetch from the database
+        data.power_users = data.power_users.map((powerUser: any) => ({
+          ...powerUser,
+          user: {
+            id: powerUser.user_id,
+            display_name: `User ${powerUser.user_id.substring(0, 6)}`,
+            avatar_url: null
+          }
+        }));
       }
     }
     

@@ -71,11 +71,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { itemId: string } }
-): Promise<NextResponse> {
-  const { userId } = await auth();
+  request: Request,
+  context: { params: { itemId: string } }
+): Promise<Response> {
+  const { params } = context;
   const itemId = params.itemId;
+  const { userId } = await auth();
   
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

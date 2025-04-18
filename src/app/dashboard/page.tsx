@@ -56,7 +56,6 @@ import Link from "next/link";
 import { useUser } from "@/contexts/UserContext";
 import { Trash2 } from "lucide-react";
 import { TopContributor } from "@/lib/database";
-import { supabase } from "@/lib/supabase";
 
 // Type definition for an idea
 interface Idea {
@@ -94,7 +93,8 @@ interface Checklist {
 
 const DashboardPage = () => {
   // State for ideas and loading
-  const [pickedIdeas, setPickedIdeas] = useState<Idea[]>([]);
+  const [myIdeas, setMyIdeas] = useState<Idea[]>([]);
+  const [collaboratedIdeas, setCollaboratedIdeas] = useState<Idea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // State for selected idea and checklists
@@ -135,29 +135,39 @@ const DashboardPage = () => {
 
   // Fetch ideas when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.id) return;
-
+    const fetchIdeas = async () => {
       try {
-        // Fetch only picked ideas
-        const { data: picksData } = await supabase
-          .from('user_picks')
-          .select('idea_id, ideas(*)')
-          .eq('user_id', user.id);
-
-        // Extract just the ideas from the joined data
-        const pickedIdeas = picksData?.map(pick => pick.ideas).filter(Boolean) || [];
-        setPickedIdeas(pickedIdeas);
-
+        setIsLoading(true);
+        const response = await fetch('/api/ideas', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',  // Include cookies and auth credentials
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          setMyIdeas(data.myIdeas || []);
+          setCollaboratedIdeas(data.collaboratedIdeas || []);
+          
+          // If there are ideas, select the first one by default
+          if (data.myIdeas?.length > 0) {
+            setSelectedIdeaId(data.myIdeas[0].id);
+          }
+        } else {
+          console.error('Failed to fetch ideas:', data.error);
+        }
       } catch (error) {
-        console.error('Error fetching picked ideas:', error);
+        console.error('Error fetching ideas:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [user]);
+    fetchIdeas();
+  }, []);
 
   // Function to fetch checklists for the selected idea
   const fetchChecklists = async () => {
@@ -196,7 +206,7 @@ const DashboardPage = () => {
 
   // Find the selected idea
   const selectedIdea = selectedIdeaId 
-    ? pickedIdeas.find(idea => idea.id === selectedIdeaId)
+    ? [...myIdeas, ...collaboratedIdeas].find(idea => idea.id === selectedIdeaId)
     : undefined;
 
   // Function to handle clicking an idea - just selects it
@@ -239,7 +249,11 @@ const DashboardPage = () => {
       
       if (response.ok) {
         // Update idea in state
-        setPickedIdeas(pickedIdeas.map(idea => 
+        setMyIdeas(myIdeas.map(idea => 
+          idea.id === editingIdeaId ? updatedIdea : idea
+        ));
+        
+        setCollaboratedIdeas(collaboratedIdeas.map(idea => 
           idea.id === editingIdeaId ? updatedIdea : idea
         ));
 
@@ -290,7 +304,7 @@ const DashboardPage = () => {
       if (response.ok) {
         // Add the new idea to the list and select it
         const createdIdea = data.idea;
-        setPickedIdeas(prevIdeas => [createdIdea, ...prevIdeas]);
+        setMyIdeas(prevIdeas => [createdIdea, ...prevIdeas]);
         setSelectedIdeaId(createdIdea.id);
         
         // Reset the form and close the dialog
@@ -381,7 +395,7 @@ const DashboardPage = () => {
 
       if (response.ok) {
         // Update the local state to reflect the change
-        setPickedIdeas(prevIdeas =>
+        setMyIdeas(prevIdeas =>
           prevIdeas.map(idea =>
             idea.id === ideaId
               ? { ...idea, is_published: true }
@@ -411,7 +425,7 @@ const DashboardPage = () => {
 
       if (response.ok) {
         // Remove the deleted idea from the state
-        setPickedIdeas(prevIdeas => prevIdeas.filter(idea => idea.id !== ideaId));
+        setMyIdeas(prevIdeas => prevIdeas.filter(idea => idea.id !== ideaId));
         
         // If the deleted idea was selected, clear the selection
         if (selectedIdeaId === ideaId) {
@@ -683,7 +697,8 @@ const DashboardPage = () => {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Ideas</h2>
                 <TabsList>
-                  <TabsTrigger value="my-ideas">My Picks</TabsTrigger>
+                  <TabsTrigger value="my-ideas">My Ideas</TabsTrigger>
+                  <TabsTrigger value="collaborated">My Picks</TabsTrigger>
                 </TabsList>
               </div>
               
@@ -713,7 +728,7 @@ const DashboardPage = () => {
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="divide-y divide-border">
-                      {pickedIdeas.map((idea) => (
+                      {myIdeas.map((idea) => (
                         <div 
                           key={idea.id}
                           onClick={() => handleIdeaClick(idea)}
@@ -803,6 +818,98 @@ const DashboardPage = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+              
+              <TabsContent value="collaborated" className="space-y-0 mt-0">
+                <Card>
+                  <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
+                    <div className="flex justify-between w-full items-center">
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          placeholder="Search ideas..."
+                          className="h-8 w-[150px] lg:w-[250px]"
+                        />
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <ListFilter className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-border">
+                      {collaboratedIdeas.map((idea) => (
+                        <div 
+                          key={idea.id}
+                          onClick={() => handleIdeaClick(idea)}
+                          className={`
+                            px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors 
+                            ${selectedIdeaId === idea.id ? 'bg-muted' : ''}
+                          `}
+                        >
+                          <div className="flex justify-between mb-1">
+                            <h3 className="font-medium text-sm">
+                              <Link href={`/ideas/${idea.id}`} className="hover:underline text-primary">
+                                {idea.title}
+                              </Link>
+                              <Badge variant="outline" className="ml-2 text-[10px] font-normal">{idea.upvotes} upvotes</Badge>
+                            </h3>
+                            <Badge className="text-[10px] capitalize px-1.5 py-0 h-4 bg-blue-100 text-blue-800 hover:bg-blue-100">
+                              Public
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{idea.description}</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center">
+                                <Users className="h-3 w-3 text-muted-foreground mr-1" />
+                                <span className="text-xs text-muted-foreground">{idea.upvotes} collaborators</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Avatar className="h-4 w-4">
+                                  <AvatarFallback className="text-[8px]">{idea.creator_id.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs text-muted-foreground">{idea.creator_id}</span>
+                              </div>
+                            </div>
+                            <Badge 
+                              className={`text-[10px] capitalize px-1.5 py-0 h-4 ${
+                                idea.status === 'Planning' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : 
+                                idea.status === 'In Progress' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                'bg-blue-100 text-blue-800 hover:bg-blue-100'
+                              }`}
+                            >
+                              {idea.status}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditIdea(idea);
+                                }}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                  <span>Edit Idea</span>
+                                </DropdownMenuItem>
+                                <Link 
+                                  href={`/ideas/${idea.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                >
+                                  <ArrowUpRight className="h-3.5 w-3.5 mr-2" />
+                                  <span>Go to Discussion</span>
+                                </Link>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
           
@@ -822,7 +929,8 @@ const DashboardPage = () => {
                 <CardHeader className="pb-0">
                   <div className="flex justify-between items-center">
                     <CardTitle>
-                      {pickedIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
+                      {myIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
+                       collaboratedIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
                        'Checklists'}
                     </CardTitle>
                     <Button 
@@ -1215,9 +1323,14 @@ const DashboardPage = () => {
                 className="col-span-3 p-2 rounded-md border"
               >
                 <option value="">Select an idea</option>
-                {pickedIdeas.map((idea) => (
+                {myIdeas.map((idea) => (
                   <option key={idea.id} value={idea.id}>
                     {idea.title}
+                  </option>
+                ))}
+                {collaboratedIdeas.map((idea) => (
+                  <option key={idea.id} value={idea.id}>
+                    {idea.title} (Collaborated)
                   </option>
                 ))}
               </select>

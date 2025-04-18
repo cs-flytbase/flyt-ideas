@@ -2,20 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-// Type for checklist item response
-interface ChecklistItem {
-  id: string;
-  checklist_id: string;
-  text: string;
-  position: number;
-  completed: boolean;
-  completed_by: string | null;
-  completed_at: string | null;
-  checklists?: {
-    creator_id: string;
-  };
-}
-
+// PATCH: Update checklist item
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { itemId: string } }
@@ -34,10 +21,10 @@ export async function PATCH(
   try {
     const { completed } = await request.json();
 
-    const updateData: Partial<ChecklistItem> = {
+    const updateData = {
       completed,
       completed_by: completed ? userId : null,
-      completed_at: completed ? new Date().toISOString() : null
+      completed_at: completed ? new Date().toISOString() : null,
     };
 
     const { data, error } = await supabase
@@ -50,43 +37,37 @@ export async function PATCH(
     if (error) throw error;
 
     return NextResponse.json(data);
-  } catch (err) {
-    console.error('PATCH error:', err);
+  } catch (error) {
+    console.error('PATCH error:', error);
     return NextResponse.json({ error: 'Failed to update checklist item' }, { status: 500 });
   }
 }
 
+// DELETE: Remove checklist item (only by owner)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { itemId: string } }
 ): Promise<Response> {
-  const itemId = params.itemId;
   const { userId } = await auth();
+  const itemId = params.itemId;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!itemId) {
-    return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
-  }
-
   try {
-    const { data: item, error: itemError } = await supabase
+    const { data: item, error } = await supabase
       .from('checklist_items')
-      .select(`
-        checklist_id,
-        checklists:checklist_id(creator_id)
-      `)
+      .select(`checklists:checklist_id(creator_id)`)
       .eq('id', itemId)
       .single();
 
-    if (itemError) throw itemError;
+    if (error) throw error;
 
-    const checklist = item.checklist_id;
+    const checklist = (item as unknown as { checklists: { creator_id: string }[] }).checklists?.[0];
 
     if (!checklist || checklist.creator_id !== userId) {
-      return NextResponse.json({ error: 'Only the checklist owner can delete items' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { error: deleteError } = await supabase
@@ -97,8 +78,8 @@ export async function DELETE(
     if (deleteError) throw deleteError;
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('DELETE error:', err);
+  } catch (error) {
+    console.error('DELETE error:', error);
     return NextResponse.json({ error: 'Failed to delete checklist item' }, { status: 500 });
   }
 }

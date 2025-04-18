@@ -1,11 +1,11 @@
-import { supabase } from '@/lib/supabase';
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { supabase } from '@/lib/supabase';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { itemId: string } }
-): Promise<Response> {
+) {
   const itemId = params.itemId;
   const { userId } = await auth();
 
@@ -13,23 +13,14 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!itemId) {
-    return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
-  }
-
   try {
     const { data: item, error: itemError } = await supabase
       .from('checklist_items')
-      .select(`
-        checklist_id,
-        checklists:checklist_id(creator_id)
-      `)
+      .select(`checklist_id, checklists:checklist_id(creator_id)`)
       .eq('id', itemId)
       .single();
 
-    if (itemError) {
-      throw itemError;
-    }
+    if (itemError) throw itemError;
 
     const checklist = (item as any).checklists;
 
@@ -42,9 +33,7 @@ export async function DELETE(
       .delete()
       .eq('id', itemId);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (error) {

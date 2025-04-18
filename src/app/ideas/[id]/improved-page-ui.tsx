@@ -1,4 +1,92 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
+import { MainLayout } from '@/components/main-layout';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
+import { 
+  ArrowLeft, Tag, ThumbsUp, ThumbsDown, MessageSquare, 
+  CheckSquare, History, Users, Loader2 
+} from 'lucide-react';
+
+// Define types needed for this component
+interface Assignment {
+  id: string;
+  idea_id: string;
+  user_id: string;
+  status: string;
+  assigned_at: string;
+  user?: {
+    id: string;
+    display_name: string;
+    avatar_url: string;
+  };
+}
+
+interface ImprovedIdeaUIProps {
+  idea: any;
+  commentCount: number;
+  userVote: number | null;
+  isVoting: boolean;
+  isAssigning: boolean;
+  isUnassigning: boolean;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  handleVote: (value: number) => void;
+  handlePickIdea: () => void;
+  handleUnpickIdea: () => void;
+  isUserLoaded: boolean;
+  checklists: any;
+  isLoadingHistory: boolean;
+  isConfirmDeleteOpen: boolean;
+  setIsConfirmDeleteOpen: (open: boolean) => void;
+}
+
+export default function ImprovedIdeaUI(props: ImprovedIdeaUIProps) {
+  const {
+    idea, commentCount, userVote, isVoting, isAssigning, isUnassigning,
+    activeTab, setActiveTab, handleVote, handlePickIdea, handleUnpickIdea,
+    isUserLoaded, checklists, isLoadingHistory, isConfirmDeleteOpen, setIsConfirmDeleteOpen
+  } = props;
+  
+  const { user } = useUser();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  
+  useEffect(() => {
+    // Fetch assignments when component mounts
+    const fetchAssignments = async () => {
+      try {
+        const response = await fetch(`/api/ideas/${idea.id}/assignments`);
+        if (response.ok) {
+          const data = await response.json();
+          setAssignments(data.assignments || []);
+        }
+      } catch (error) {
+        console.error('Error fetching assignments:', error);
+      }
+    };
+    
+    if (idea?.id) {
+      fetchAssignments();
+    }
+  }, [idea?.id]);
+
+  // Check if current user is assigned to this idea
   const isUserAssigned = assignments.some(a => a.user_id === user?.id);
+
+  // Helper function to get initials
+  const getInitials = (name: string) => {
+    if (!name) return '';
+    return name.split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
   return (
     <MainLayout>

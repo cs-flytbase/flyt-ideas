@@ -71,10 +71,9 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
-  context: { params: { itemId: string } }
+  request: NextRequest,
+  { params }: { params: { itemId: string } }
 ): Promise<Response> {
-  const { params } = context;
   const itemId = params.itemId;
   const { userId } = await auth();
   
@@ -101,15 +100,12 @@ export async function DELETE(
       throw itemError;
     }
 
-    // Use a safer approach with proper typing
-    const checklist = (item as unknown as any).checklists;
-    
-    // Check if the user is the creator of the checklist
-    if (!checklist || !checklist.creator_id || checklist.creator_id !== userId) {
+    const checklist = (item as any).checklists;
+
+    if (!checklist || checklist.creator_id !== userId) {
       return NextResponse.json({ error: 'Only the checklist owner can delete items' }, { status: 403 });
     }
 
-    // Delete the item
     const { error } = await supabase
       .from('checklist_items')
       .delete()
@@ -125,3 +121,4 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete checklist item' }, { status: 500 });
   }
 }
+

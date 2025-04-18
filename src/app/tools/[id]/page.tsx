@@ -292,7 +292,8 @@ export default function ToolDetailPage() {
         <div className="flex flex-col space-y-4 md:flex-row md:items-start md:justify-between md:space-y-0">
           <div className="flex items-start space-x-4">
             <div className="h-12 w-12 rounded-lg bg-primary/10 p-2 flex items-center justify-center text-primary">
-              {tool.icon}
+            {/* ts-ignore */}
+              {toolIcons[tool.icon_name]}
             </div>
             <div>
               <h1 className="text-3xl font-bold">{tool.name}</h1>

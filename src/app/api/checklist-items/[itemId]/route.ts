@@ -2,16 +2,13 @@ import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-// ✅ This is how Next.js expects the second arg to be typed
-type Params = { params: { itemId: string } };
-
 // PATCH: Update checklist item
 export async function PATCH(
   request: NextRequest,
-  context: Params
+  context: { params: Promise<{ itemId: string }> }
 ): Promise<Response> {
   const { userId } = await auth();
-  const itemId = context.params.itemId;
+  const { itemId } = await context.params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -45,10 +42,10 @@ export async function PATCH(
 // DELETE: Remove checklist item
 export async function DELETE(
   request: NextRequest,
-  context: Params
+  context: { params: Promise<{ itemId: string }> }
 ): Promise<Response> {
   const { userId } = await auth();
-  const itemId = context.params.itemId;
+  const { itemId } = await context.params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

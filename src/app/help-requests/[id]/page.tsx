@@ -4,14 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  CardFooter,
-  CardTitle,
-  CardDescription
-} from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -23,28 +16,22 @@ import {
 } from '@/components/ui/select';
 import { MainLayout } from '@/components/main-layout';
 
-interface PageProps {
-  params: { id: string };
-}
+// ⛳ Fix: Accept async params object (Next.js 15 compatibility)
+export default async function HelpRequestDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params; // 👈 must await this or build will fail
 
-export default function HelpRequestDetailPage({ params }: PageProps) {
   const [newResponse, setNewResponse] = useState('');
   const [currentStatus, setCurrentStatus] = useState<'open' | 'assigned' | 'in_progress' | 'resolved'>('assigned');
 
+  // Simulated help request (replace with fetch logic later)
   const helpRequest = {
-    id: params.id,
+    id,
     title: 'Authentication flow not working properly',
-    description: `We're experiencing issues with our authentication flow where users are sometimes getting logged out unexpectedly. I've verified that the tokens are being set correctly but something is causing them to expire or become invalid sooner than they should.
-
-Steps to reproduce:
-1. Login to the application
-2. Navigate between pages for about 5 minutes
-3. Attempt to access a protected route
-
-Expected behavior: User stays logged in
-Actual behavior: User is sometimes redirected to login
-
-Any help debugging this would be much appreciated!`,
+    description: `We're experiencing issues with our authentication flow where users are sometimes getting logged out unexpectedly...`,
     status: currentStatus,
     priority: 'high' as const,
     createdAt: '2025-03-17T14:30:00Z',
@@ -61,23 +48,13 @@ Any help debugging this would be much appreciated!`,
     tags: ['auth', 'clerk', 'bug'],
     responses: [
       {
-        id: 'response1',
+        id: '1',
         content: 'Have you checked the token expiration settings in your Clerk dashboard?',
         createdAt: '2025-03-17T15:45:00Z',
         user: {
           id: 'user3',
           name: 'Alex Johnson',
           avatarUrl: 'https://avatars.githubusercontent.com/u/1234567'
-        }
-      },
-      {
-        id: 'response2',
-        content: 'Thanks Alex, I checked and they seem okay. Could it be the refresh mechanism?',
-        createdAt: '2025-03-17T16:30:00Z',
-        user: {
-          id: 'user2',
-          name: 'Pat Miller',
-          avatarUrl: 'https://avatars.githubusercontent.com/u/4567890'
         }
       }
     ]
@@ -93,32 +70,31 @@ Any help debugging this would be much appreciated!`,
       hour12: true
     });
 
-  const getPriorityBadge = (priority: 'low' | 'medium' | 'high' | 'urgent') => {
-    const colorMap = {
-      low: 'bg-slate-100',
-      medium: 'bg-blue-100 text-blue-800',
-      high: 'bg-amber-100 text-amber-800',
-      urgent: 'bg-red-100 text-red-800'
-    };
-    return <Badge className={colorMap[priority]}> {priority.charAt(0).toUpperCase() + priority.slice(1)} </Badge>;
-  };
-
   const getStatusBadge = (status: typeof currentStatus) => {
-    const badgeMap = {
+    const map = {
       open: 'bg-green-500',
       assigned: 'bg-blue-500',
       in_progress: 'bg-purple-500',
       resolved: 'border text-muted-foreground'
     };
-    return <Badge className={badgeMap[status]}> {status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} </Badge>;
+    return <Badge className={map[status]}>{status.replace('_', ' ').toUpperCase()}</Badge>;
   };
 
-  const handleStatusChange = (value: string) => {
-    setCurrentStatus(value as typeof currentStatus);
+  const getPriorityBadge = (priority: 'low' | 'medium' | 'high' | 'urgent') => {
+    const map = {
+      low: 'bg-slate-100',
+      medium: 'bg-blue-100 text-blue-800',
+      high: 'bg-amber-100 text-amber-800',
+      urgent: 'bg-red-100 text-red-800'
+    };
+    return <Badge className={map[priority]}>{priority.toUpperCase()}</Badge>;
   };
+
+  const handleStatusChange = (val: string) =>
+    setCurrentStatus(val as typeof currentStatus);
 
   const handleSubmitResponse = () => {
-    console.log('Submitting response:', newResponse);
+    console.log('Response submitted:', newResponse);
     setNewResponse('');
   };
 
@@ -128,19 +104,10 @@ Any help debugging this would be much appreciated!`,
         <div className="mb-6 flex items-center">
           <Button variant="ghost" size="sm" asChild className="mr-2">
             <Link href="/help-requests">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="m15 18-6-6 6-6" />
               </svg>
-              <span className="ml-1">Back to Help Requests</span>
+              <span className="ml-1">Back</span>
             </Link>
           </Button>
         </div>
@@ -148,10 +115,10 @@ Any help debugging this would be much appreciated!`,
         <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-4 sm:space-y-0">
+              <div className="flex justify-between items-start">
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <CardTitle>{helpRequest.title}</CardTitle>
+                  <CardTitle className="text-2xl">{helpRequest.title}</CardTitle>
+                  <div className="flex gap-2 mt-2">
                     {getStatusBadge(helpRequest.status)}
                     {getPriorityBadge(helpRequest.priority)}
                   </div>
@@ -159,7 +126,7 @@ Any help debugging this would be much appreciated!`,
                     Requested by {helpRequest.createdBy.name} on {formatDate(helpRequest.createdAt)}
                   </CardDescription>
                 </div>
-                <Select value={currentStatus} onValueChange={handleStatusChange}>
+                <Select value={helpRequest.status} onValueChange={handleStatusChange}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -171,28 +138,30 @@ Any help debugging this would be much appreciated!`,
                   </SelectContent>
                 </Select>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex gap-2 flex-wrap">
                 {helpRequest.tags.map(tag => (
                   <Badge key={tag} variant="secondary">{tag}</Badge>
                 ))}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10 mt-1">
+              <div className="flex gap-4">
+                <Avatar className="h-10 w-10">
                   <AvatarImage src={helpRequest.createdBy.avatarUrl} />
                   <AvatarFallback>{helpRequest.createdBy.name[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-semibold">{helpRequest.createdBy.name}</div>
-                  <div className="text-sm text-muted-foreground mb-2">{formatDate(helpRequest.createdAt)}</div>
+                  <div className="font-medium">{helpRequest.createdBy.name}</div>
+                  <div className="text-sm text-muted-foreground mb-1">
+                    {formatDate(helpRequest.createdAt)}
+                  </div>
                   <p className="whitespace-pre-wrap text-sm">{helpRequest.description}</p>
                 </div>
               </div>
             </CardContent>
             {helpRequest.assignedTo && (
               <CardFooter className="bg-muted/50 border-t">
-                <div className="flex w-full justify-between items-center">
+                <div className="flex justify-between items-center w-full">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Assigned to:</span>
                     <Avatar className="h-6 w-6">
@@ -207,44 +176,42 @@ Any help debugging this would be much appreciated!`,
             )}
           </Card>
 
-          <h2 className="text-xl font-bold mt-6">Responses ({helpRequest.responses.length})</h2>
+          <h2 className="text-xl font-semibold mt-4">Responses ({helpRequest.responses.length})</h2>
 
-          <div className="space-y-4">
-            {helpRequest.responses.map(response => (
-              <Card key={response.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={response.user.avatarUrl} />
-                      <AvatarFallback>{response.user.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-semibold">{response.user.name}</div>
-                      <CardDescription>{formatDate(response.createdAt)}</CardDescription>
-                    </div>
+          {helpRequest.responses.map(response => (
+            <Card key={response.id}>
+              <CardHeader className="pb-2">
+                <div className="flex gap-2 items-center">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={response.user.avatarUrl} />
+                    <AvatarFallback>{response.user.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-semibold">{response.user.name}</div>
+                    <CardDescription>{formatDate(response.createdAt)}</CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p>{response.content}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p>{response.content}</p>
+              </CardContent>
+            </Card>
+          ))}
 
-          <Card className="mt-6">
+          <Card className="mt-4">
             <CardHeader>
               <CardTitle>Add a Response</CardTitle>
             </CardHeader>
             <CardContent>
               <Textarea
-                className="min-h-[120px]"
-                placeholder="Write your response..."
                 value={newResponse}
                 onChange={(e) => setNewResponse(e.target.value)}
+                placeholder="Write your response..."
+                className="min-h-[100px]"
               />
             </CardContent>
-            <CardFooter className="flex justify-end border-t pt-4">
-              <Button onClick={handleSubmitResponse}>Submit Response</Button>
+            <CardFooter className="justify-end border-t pt-4">
+              <Button onClick={handleSubmitResponse}>Submit</Button>
             </CardFooter>
           </Card>
         </div>

@@ -86,9 +86,9 @@ export async function GET(
 // POST: Add a power user to a tool
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = params;
+  const { id } = await params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });

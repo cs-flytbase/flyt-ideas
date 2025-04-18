@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// GET: Fetch tool with formatted power users
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +29,7 @@ export async function GET(
       throw toolCheckError;
     }
 
-    // Fetch tool with power_users (not profiles yet)
+    // Fetch tool with power_users
     const { data: tool, error: toolFetchError } = await supabase
       .from('tools')
       .select(`
@@ -64,10 +65,7 @@ export async function GET(
       joined_at: pu.joined_at,
     }));
 
-    const {
-      power_users, // omit raw field
-      ...toolData
-    } = tool;
+    const { power_users, ...toolData } = tool;
 
     return NextResponse.json({
       ...toolData,
@@ -76,5 +74,48 @@ export async function GET(
   } catch (error) {
     console.error('Error in tool GET handler:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// POST: Add a power user to a tool
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
+  }
+
+  try {
+    const { user_id, expertise_level } = await request.json();
+
+    if (!user_id || !expertise_level) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const supabase = createClient();
+
+    // Insert power user
+    const { data, error } = await supabase
+      .from('tool_power_users')
+      .insert({
+        tool_id: id,
+        user_id,
+        expertise_level,
+        joined_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, power_user: data });
+  } catch (error) {
+    console.error('Error in tool POST handler:', error);
+    return NextResponse.json({ error: 'Failed to add power user' }, { status: 500 });
   }
 }

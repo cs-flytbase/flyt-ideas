@@ -1,113 +1,79 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-export async function GET(request: Request) {
+// GET: Fetch public ideas or user's ideas
+export async function GET(request: NextRequest): Promise<Response> {
   const { searchParams } = new URL(request.url);
-  const publicOnly = searchParams.get('public');
-  const session = await auth();
-  const userId = session?.userId;
-  
-  // Handle request for public/published ideas only
-  if (publicOnly === 'true') {
-    try {
-      // Get all published ideas, no auth required
+  const publicOnly = searchParams.get('public') === 'true';
+
+  try {
+    const session = await auth();
+    const userId = session?.userId;
+
+    // 🔓 Public ideas (no login required)
+    if (publicOnly) {
       const { data: publishedIdeas, error } = await supabase
         .from('ideas')
-        .select(`
-          *,
-          comments(count)
-        `)
+        .select('*, comments(count)')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
-      
-      // Fetch user info for each idea creator
-      const formattedIdeas = await Promise.all(publishedIdeas.map(async (idea) => {
-        // Get creator info from users table
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('display_name, avatar_url')
-          .eq('id', idea.creator_id)
-          .single();
-          
-        return {
-          ...idea,
-          commentCount: idea.comments.count || 0,
-          users: userData ? {
-            display_name: userData.display_name || 'Anonymous',
-            avatar_url: userData.avatar_url || ''
-          } : {
-            display_name: 'Anonymous',
-            avatar_url: ''
-          }
-        };
-      }));
+      if (error) throw error;
 
-      return NextResponse.json({
-        ideas: formattedIdeas
-      });
-    } catch (error) {
-      console.error('Error fetching ideas:', error);
-      return NextResponse.json({ error: 'Failed to fetch ideas' }, { status: 500 });
+      const formattedIdeas = await Promise.all(
+        publishedIdeas.map(async (idea) => {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('display_name, avatar_url')
+            .eq('id', idea.creator_id)
+            .single();
+
+          return {
+            ...idea,
+            commentCount: idea.comments.count || 0,
+            users: userData ?? {
+              display_name: 'Anonymous',
+              avatar_url: '',
+            },
+          };
+        })
+      );
+
+      return NextResponse.json({ ideas: formattedIdeas });
     }
-  }
-  
-  // Original implementation for authenticated users
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
-  try {
-    // Get user's own ideas (now including comment counts)
+    // 🔐 Authenticated access to own & collaborated ideas
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { data: myIdeas, error: myIdeasError } = await supabase
       .from('ideas')
-      .select(`
-        *,
-        comments(count),
-        users:creator_id(display_name, avatar_url)
-      `)
+      .select('*, comments(count), users:creator_id(display_name, avatar_url)')
       .eq('creator_id', userId)
       .order('created_at', { ascending: false });
 
-    if (myIdeasError) {
-      throw myIdeasError;
-    }
+    if (myIdeasError) throw myIdeasError;
 
-    // Get ideas where user is a collaborator (now including comment counts)
     const { data: collaboratedIdeas, error: collaboratedIdeasError } = await supabase
       .from('ideas')
-      .select(`
-        *,
-        comments(count),
-        users:creator_id(display_name, avatar_url),
-        idea_collaborators!inner(*)
-      `)
+      .select('*, comments(count), users:creator_id(display_name, avatar_url), idea_collaborators!inner(*)')
       .eq('idea_collaborators.user_id', userId)
-      .neq('creator_id', userId) // Exclude own ideas
+      .neq('creator_id', userId)
       .order('created_at', { ascending: false });
 
-    if (collaboratedIdeasError) {
-      throw collaboratedIdeasError;
-    }
+    if (collaboratedIdeasError) throw collaboratedIdeasError;
 
-    // Format the ideas to include commentCount
-    const formattedMyIdeas = myIdeas.map(idea => ({
-      ...idea,
-      commentCount: idea.comments.count || 0
-    }));
-
-    const formattedCollaboratedIdeas = collaboratedIdeas.map(idea => ({
-      ...idea,
-      commentCount: idea.comments.count || 0
-    }));
+    const format = (ideas) =>
+      ideas.map((idea) => ({
+        ...idea,
+        commentCount: idea.comments?.count || 0,
+      }));
 
     return NextResponse.json({
-      myIdeas: formattedMyIdeas,
-      collaboratedIdeas: formattedCollaboratedIdeas
+      myIdeas: format(myIdeas),
+      collaboratedIdeas: format(collaboratedIdeas),
     });
   } catch (error) {
     console.error('Error fetching ideas:', error);
@@ -115,10 +81,11 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+// POST: Create a new idea
+export async function POST(request: NextRequest): Promise<Response> {
   const session = await auth();
-  const userId = session.userId;
-  
+  const userId = session?.userId;
+
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -130,39 +97,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    // Check if the user exists in the users table
-    const { data: existingUser, error: userCheckError } = await supabase
+    // Ensure user exists
+    const { data: existingUser, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('id', userId)
       .single();
 
-    if (userCheckError && userCheckError.code !== 'PGRST116') {
-      // PGRST116 is the code for "no rows returned"
-      throw userCheckError;
-    }
+    if (userError && userError.code !== 'PGRST116') throw userError;
 
-    // If user doesn't exist, create them with basic info
-    // We'll implement a more robust user creation in a separate API endpoint
     if (!existingUser) {
-      // Try to get basic information from auth session
-      const { error: createUserError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: userId,
-            display_name: 'User', // Will be updated later
-            is_online: true,
-            last_active: new Date().toISOString()
-          }
-        ]);
-
-      if (createUserError) {
-        throw createUserError;
-      }
+      const { error: createUserError } = await supabase.from('users').insert([
+        {
+          id: userId,
+          display_name: 'User',
+          is_online: true,
+          last_active: new Date().toISOString(),
+        },
+      ]);
+      if (createUserError) throw createUserError;
     }
 
-    // Now create the idea
     const { data, error } = await supabase
       .from('ideas')
       .insert([
@@ -173,14 +128,12 @@ export async function POST(request: Request) {
           creator_id: userId,
           status: status || 'draft',
           upvotes: 0,
-          tags: tags || []
-        }
+          tags: tags || [],
+        },
       ])
       .select();
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     return NextResponse.json({ idea: data[0] });
   } catch (error) {
@@ -189,10 +142,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+// PUT: Update current user info
+export async function PUT(request: NextRequest): Promise<Response> {
   const session = await auth();
-  const userId = session.userId;
-  
+  const userId = session?.userId;
+
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -200,21 +154,18 @@ export async function PUT(request: Request) {
   try {
     const { email, firstName, lastName, avatarUrl } = await request.json();
 
-    // Update user information
-    const { error: updateUserError } = await supabase
-      .from('users')
-      .update([
-        {
-          id: userId,
-          email: email || '',
-          display_name: `${firstName} ${lastName}`.trim() || 'User',
-          avatar_url: avatarUrl || ''
-        }
-      ]);
+    const displayName = `${firstName ?? ''} ${lastName ?? ''}`.trim() || 'User';
 
-    if (updateUserError) {
-      throw updateUserError;
-    }
+    const { error } = await supabase
+      .from('users')
+      .update({
+        email: email || '',
+        display_name: displayName,
+        avatar_url: avatarUrl || '',
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: 'User updated successfully' });
   } catch (error) {

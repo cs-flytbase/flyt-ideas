@@ -73,7 +73,7 @@ export async function PATCH(
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { itemId: string } }
-) {
+): Promise<NextResponse> {
   const { userId } = await auth();
   const itemId = params.itemId;
   

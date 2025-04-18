@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 // GET: Fetch tool details with formatted power users
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = params;
+  const { id } = await params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });

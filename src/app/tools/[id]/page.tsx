@@ -1,19 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import type { NextApiRequest } from 'next';
-import type { NextRequest as AppNextRequest } from 'next/server';
-
-// 👇 import the correct type for context
-// import type { NextRequest } from 'next/server';
-import type { NextApiResponse } from 'next';
-import type { NextApiHandler } from 'next';
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { itemId: string } }
+  { params }: { params: { itemId: string } }
 ): Promise<Response> {
-  const itemId = context.params.itemId;
+  const itemId = params.itemId;
   const { userId } = await auth();
 
   if (!userId) {

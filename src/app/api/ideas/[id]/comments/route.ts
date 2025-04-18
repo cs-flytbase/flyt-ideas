@@ -4,9 +4,9 @@ import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const ideaId = params.id;
+  const { id: ideaId } = await params;
 
   if (!ideaId) {
     return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
@@ -36,10 +36,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
-  const ideaId = params.id;
+  const { id: ideaId } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

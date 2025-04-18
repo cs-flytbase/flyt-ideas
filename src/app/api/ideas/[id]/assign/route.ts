@@ -5,11 +5,11 @@ import { auth } from '@clerk/nextjs/server';
 // API endpoint for assigning users to ideas
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
   // Extract the idea ID from the params object
-  const { id: ideaId } = params;
+  const { id: ideaId } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -80,10 +80,10 @@ export async function POST(
 // Get all assignments for an idea
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   // Extract the idea ID from the params object
-  const { id: ideaId } = params;
+  const { id: ideaId } = await params;
 
   if (!ideaId) {
     return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
@@ -114,11 +114,11 @@ export async function GET(
 // Remove a user's assignment from an idea
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
   // Extract the idea ID from the params object
-  const { id: ideaId } = params;
+  const { id: ideaId } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

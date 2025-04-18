@@ -1,0 +1,58 @@
+{
+  "tools": [
+    {
+      "id": 1,
+      "name": "Figma",
+      "description": "Design, prototype, and collaborate all in the browser with this powerful design tool.",
+      "tags": ["Design", "Collaboration", "Prototyping"],
+      "usageCount": 78,
+      "powerUsers": ["Alex", "Jamie", "Casey"],
+      "iconName": "figma"
+    },
+    {
+      "id": 2,
+      "name": "GitHub",
+      "description": "A platform for version control and collaboration for software developers.",
+      "tags": ["Development", "Collaboration", "Version Control"],
+      "usageCount": 152,
+      "powerUsers": ["Morgan", "Riley", "Taylor", "Sam"],
+      "iconName": "github"
+    },
+    {
+      "id": 3,
+      "name": "Notion",
+      "description": "All-in-one workspace for notes, tasks, wikis, and databases.",
+      "tags": ["Productivity", "Documentation", "Collaboration"],
+      "usageCount": 104,
+      "powerUsers": ["Casey", "Alex", "Jamie"],
+      "iconName": "notion"
+    },
+    {
+      "id": 4,
+      "name": "Slack",
+      "description": "Channel-based messaging platform for team communication.",
+      "tags": ["Communication", "Collaboration", "Productivity"],
+      "usageCount": 187,
+      "powerUsers": ["Riley", "Morgan", "Taylor"],
+      "iconName": "slack"
+    },
+    {
+      "id": 5,
+      "name": "Google Workspace",
+      "description": "Suite of cloud computing, productivity and collaboration tools.",
+      "tags": ["Productivity", "Collaboration", "Cloud"],
+      "usageCount": 165,
+      "powerUsers": ["Sam", "Casey", "Jamie"],
+      "iconName": "google"
+    },
+    {
+      "id": 6,
+      "name": "Linear",
+      "description": "Issue tracking tool designed for modern software development teams.",
+      "tags": ["Development", "Project Management", "Issue Tracking"],
+      "usageCount": 62,
+      "powerUsers": ["Riley", "Morgan", "Alex"],
+      "iconName": "linear"
+    }
+  ]
+}

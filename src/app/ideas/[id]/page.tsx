@@ -1,350 +1,556 @@
-// app/ideas/[id]/page.tsx
+"use client";
 
-import { MainLayout } from "@/components/main-layout";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, MessageSquare, History, ArrowLeft, Users } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
 
+// Import components
+import { CommentSection, HistoryTab } from './components';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MainLayout } from "@/components/main-layout";
+
+// Define types based on our API responses
 interface Comment {
-  id: number;
-  author: string;
+  id: string;
+  idea_id: string;
+  user_id: string;
   content: string;
-  date: string;
-  upvotes: number;
-  replies?: Comment[];
+  created_at: string;
+  user: {
+    id: string;
+    display_name: string;
+    avatar_url: string;
+  };
 }
 
-const IdeaDetailPage = () => {
-  // Mock data for the idea
-  const idea = {
-    id: 1,
-    title: "Mobile App Redesign",
-    description:
-      "We need to revamp our mobile app interface with a more intuitive navigation and modern design elements. The current design is feeling dated and users are struggling with the navigation flow. I propose we take inspiration from some of the top productivity apps that have excellent UX/UI.",
-    author: "Alex Chen",
-    date: "2 days ago",
-    upvotes: 24,
-    tags: ["Design", "Mobile", "UX/UI"],
+interface Assignment {
+  id: string;
+  idea_id: string;
+  user_id: string;
+  status: string;
+  assigned_at: string;
+  user: {
+    id: string;
+    display_name: string;
+    avatar_url: string;
+  };
+}
+
+// Helper function to get user initials from a name
+const getInitials = (name: string): string => {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+export default function IdeaPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const [loading, setLoading] = useState(true);
+  const [idea, setIdea] = useState<any | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isUnassigning, setIsUnassigning] = useState(false);
+  const [userVote, setUserVote] = useState<number | null>(null);
+  const [isVoting, setIsVoting] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchIdea() {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        // Fetch idea details
+        const ideaResponse = await fetch(`/api/ideas/${id}`);
+        if (!ideaResponse.ok) {
+          throw new Error('Failed to fetch idea');
+        }
+        const ideaData = await ideaResponse.json();
+        setIdea(ideaData);
+
+        // Fetch comments for this idea
+        const commentsResponse = await fetch(`/api/ideas/${id}/comments`);
+        if (!commentsResponse.ok) {
+          throw new Error('Failed to fetch comments');
+        }
+        const commentsData = await commentsResponse.json();
+        setComments(commentsData.comments || []);
+        
+        // Update comment count with actual length
+        if (commentsData.comments) {
+          setCommentCount(commentsData.comments.length);
+        }
+
+        // Fetch assignments for this idea
+        const assignmentsResponse = await fetch(`/api/ideas/${id}/assign`);
+        if (!assignmentsResponse.ok) {
+          throw new Error('Failed to fetch assignments');
+        }
+        const assignmentsData = await assignmentsResponse.json();
+        setAssignments(assignmentsData.assignments || []);
+
+        // Fetch user's vote if they're logged in
+        if (isUserLoaded && user) {
+          const voteResponse = await fetch(`/api/ideas/${id}/vote`);
+          if (voteResponse.ok) {
+            const voteData = await voteResponse.json();
+            setUserVote(voteData.vote?.vote_type || null);
+          }
+        }
+
+      } catch (err) {
+        console.error("Error fetching idea:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchIdea();
+  }, [id, isUserLoaded, user]);
+
+  const handleSubmitComment = async () => {
+    if (!id || !newComment.trim() || !isUserLoaded || !user) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      const response = await fetch(`/api/ideas/${id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        }),
+      });
+      
+      if (response.ok) {
+        const newCommentData = await response.json();
+        // Add the new comment to the comments array
+        setComments(prev => [...prev, newCommentData.comment]);
+        // Update comment count
+        setCommentCount(prev => prev + 1);
+        // Clear the form
+        setNewComment('');
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Mock data for comments
-  const comments: Comment[] = [
-    {
-      id: 1,
-      author: "Jamie Taylor",
-      content:
-        "I completely agree with this. Our user testing showed that the navigation is the biggest pain point. We should prioritize that first.",
-      date: "1 day ago",
-      upvotes: 12,
-      replies: [
-        {
-          id: 101,
-          author: "Alex Chen",
-          content:
-            "Great point! I was thinking we could start with a navigation prototype in Figma to get early feedback.",
-          date: "1 day ago",
-          upvotes: 8,
-        },
-        {
-          id: 102,
-          author: "Morgan Smith",
-          content:
-            "We also need to consider accessibility improvements in the redesign. The current contrast ratios don't meet WCAG standards.",
-          date: "22 hours ago",
-          upvotes: 6,
-          replies: [
-            {
-              id: 1021,
-              author: "Riley Johnson",
-              content:
-                "I can help with the accessibility audit. I've been working on creating a comprehensive checklist for our projects.",
-              date: "20 hours ago",
-              upvotes: 4,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: 2,
-      author: "Taylor Lee",
-      content:
-        "Have we considered bringing in a dedicated UX designer for this project? It might be worth the investment for such a critical piece of our product.",
-      date: "1 day ago",
-      upvotes: 9,
-      replies: [],
-    },
-    {
-      id: 3,
-      author: "Sam Wilson",
-      content:
-        "I'd like to see us incorporate some of the feedback from our customer support team. They hear directly from users about pain points.",
-      date: "18 hours ago",
-      upvotes: 7,
-      replies: [],
-    },
-  ];
+  const handlePickIdea = async () => {
+    if (!user?.id || !id) return;
+    
+    try {
+      setIsAssigning(true);
+      const response = await fetch(`/api/ideas/${id}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-  // Function to render a comment and its replies recursively
-  const renderComment = (comment: Comment, depth = 0) => {
+      if (!response.ok) {
+        throw new Error('Failed to pick idea');
+      }
+      
+      // Refresh assignments
+      const assignmentsResponse = await fetch(`/api/ideas/${id}/assign`);
+      const assignmentsData = await assignmentsResponse.json();
+      setAssignments(assignmentsData.assignments || []);
+      
+    } catch (err) {
+      console.error("Error picking idea:", err);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+  
+  const handleUnpickIdea = async () => {
+    if (!user?.id || !id) return;
+    
+    try {
+      setIsUnassigning(true);
+      const response = await fetch(`/api/ideas/${id}/assign`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to unpick idea');
+      }
+      
+      // Refresh assignments
+      const assignmentsResponse = await fetch(`/api/ideas/${id}/assign`);
+      const assignmentsData = await assignmentsResponse.json();
+      setAssignments(assignmentsData.assignments || []);
+      
+    } catch (err) {
+      console.error("Error unpicking idea:", err);
+    } finally {
+      setIsUnassigning(false);
+    }
+  };
+  
+  const handleVote = async (voteType: number) => {
+    if (!isUserLoaded || !user) return;
+
+    try {
+      setIsVoting(true);
+      const response = await fetch(`/api/ideas/${id}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vote_type: voteType }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // If the vote was removed (toggled off)
+        if (data.action === 'removed') {
+          setUserVote(null);
+        } else {
+          setUserVote(voteType);
+        }
+        setIdea({...idea, upvotes: data.upvotes});
+      }
+    } catch (error) {
+      console.error("Error voting:", error);
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+  const isUserAssigned = isUserLoaded && user?.id && assignments.some(
+    assignment => assignment.user_id === user.id
+  );
+
+  if (loading) {
     return (
-      <div key={comment.id} className={`mb-4 ${depth > 0 ? "ml-8" : ""}`}>
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="mr-2 h-8 w-8 rounded-full bg-primary text-center text-xs font-semibold leading-8 text-primary-foreground">
-                {comment.author.charAt(0)}
-              </div>
-              <div>
-                <div className="font-medium">{comment.author}</div>
-                <div className="text-xs text-muted-foreground">{comment.date}</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1">
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m5 15 7-7 7 7" />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold">{comment.upvotes}</span>
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m19 9-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <p className="text-sm">{comment.content}</p>
-          <div className="mt-3 flex text-xs text-muted-foreground">
-            <button className="mr-3 flex items-center hover:text-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-1"
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              Reply
-            </button>
-            <button className="flex items-center hover:text-foreground">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-1"
-              >
-                <path d="m3 21 1.9-5.7a9 9 0 1 1 3.8 3.8z" />
-              </svg>
-              Share
-            </button>
-          </div>
-        </div>
-        {comment.replies?.map((reply) => renderComment(reply, depth + 1))}
+      <div className="flex items-center justify-center min-h-screen px-4 py-6 md:px-6 lg:px-8">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
-  };
+  }
+
+  if (!idea) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-6 md:px-6 lg:px-8">
+        <div className="text-center space-y-3">
+          <h2 className="text-2xl font-bold">Idea Not Found</h2>
+          <p className="text-muted-foreground">The requested idea could not be found.</p>
+          <Button variant="outline" onClick={() => router.push('/ideas')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Ideas
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="space-y-8">
-        <div className="flex items-center space-x-2">
-          <a href="/ideas" className="text-sm text-muted-foreground hover:text-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="inline mr-1 -mt-0.5"
-            >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-            Back to Ideas
-          </a>
+      <div className="px-4 py-6 md:px-6 lg:px-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center">
+            <Button variant="ghost" size="icon" asChild className="mr-2">
+              <Link href="/ideas">
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-bold">Idea Details</h1>
+          </div>
         </div>
-
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex">
-            <div className="mr-4 flex flex-col items-center">
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m5 15 7-7 7 7" />
-                </svg>
-              </button>
-              <span className="my-1 text-sm font-semibold">{idea.upvotes}</span>
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m19 9-7 7-7-7" />
-                </svg>
-              </button>
+        {/* Clean, modern header */}
+        <div className="bg-background border-b">
+          <div className="container mx-auto px-4 py-6 md:px-6 lg:px-8">
+            <div className="flex items-center mb-6">
+              <Button variant="ghost" onClick={() => router.push('/ideas')} className="hover:bg-background/80 rounded-full">
+                <ArrowLeft className="h-5 w-5 mr-2" />
+                <span>Back to ideas</span>
+              </Button>
             </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">{idea.title}</h1>
-              <div className="mb-4 mt-2 flex flex-wrap items-center gap-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <div className="mr-2 h-5 w-5 rounded-full bg-primary text-center text-xs font-semibold leading-5 text-primary-foreground">
-                    {idea.author.charAt(0)}
+            
+            <div className="flex flex-col">
+              <div className="flex items-start gap-6">
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold tracking-tight">
+                      {idea.title}
+                    </h1>
+                    <Badge variant="outline" className="ml-2 capitalize">
+                      {idea.status || "Open"}
+                    </Badge>
                   </div>
-                  {idea.author}
+
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Created by</span>
+                    <Link href={`/users/${idea.creator_id}`} className="font-medium hover:underline">
+                      {idea.users?.display_name || "unknown"}
+                    </Link>
+                    <span>•</span>
+                    <span>{formatDistanceToNow(new Date(idea.created_at), { addSuffix: true })}</span>
+                    <span>•</span>
+                    <span>{idea.upvotes || 0} upvotes</span>
+                  </div>
+                  
+                  <div className="prose max-w-none dark:prose-invert">
+                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                      {idea.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 my-4">
+                    {idea.tags && idea.tags.map((tag: string) => (
+                      <Badge key={tag} variant="secondary" className="rounded-md px-3 py-1">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center gap-4 mt-2">
+                    {isUserLoaded && user ? (
+                      isUserAssigned ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleUnpickIdea}
+                          disabled={isUnassigning}
+                        >
+                          {isUnassigning ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Unassigning...
+                            </>
+                          ) : (
+                            <>Unpick</>
+                          )}
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="default"
+                          size="sm"
+                          onClick={handlePickIdea}
+                          disabled={isAssigning}
+                        >
+                          {isAssigning ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Assigning...
+                            </>
+                          ) : (
+                            <>Pick</>
+                          )}
+                        </Button>
+                      )
+                    ) : null}
+                    
+                    <div className="flex flex-col items-center space-y-1 mx-2">
+                      <button 
+                        className={`text-foreground/70 hover:text-primary transition-colors ${userVote === 1 ? "text-primary" : ""}`}
+                        onClick={() => handleVote(1)}
+                        disabled={isVoting}
+                      >
+                        {isVoting && userVote === 1 ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill={userVote === 1 ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m5 15 7-7 7 7" />
+                          </svg>
+                        )}
+                      </button>
+                      
+                      <span className={`text-sm font-semibold ${
+                        idea.upvotes > 0 ? "text-primary" : (
+                          idea.upvotes < 0 ? "text-destructive" : ""
+                        )
+                      }`}>
+                        {idea.upvotes || 0}
+                      </span>
+                      
+                      <button 
+                        className={`text-foreground/70 hover:text-destructive transition-colors ${userVote === -1 ? "text-destructive" : ""}`}
+                        onClick={() => handleVote(-1)}
+                        disabled={isVoting}
+                      >
+                        {isVoting && userVote === -1 ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill={userVote === -1 ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m19 9-7 7-7-7" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">•</span>
-                <span className="text-sm text-muted-foreground">{idea.date}</span>
-                {idea.tags.map((tag, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              <p className="whitespace-pre-line text-foreground">{idea.description}</p>
-              <div className="mt-6 flex items-center space-x-4 text-sm text-muted-foreground">
-                <button className="flex items-center hover:text-foreground">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-1"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                  {comments.length} Comments
-                </button>
-                <button className="flex items-center hover:text-foreground">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-1"
-                  >
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                    <polyline points="16 6 12 2 8 6" />
-                    <line x1="12" y1="2" x2="12" y2="15" />
-                  </svg>
-                  Save
-                </button>
-                <button className="flex items-center hover:text-foreground">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-1"
-                  >
-                    <path d="m3 21 1.9-5.7a9 9 0 1 1 3.8 3.8z" />
-                  </svg>
-                  Share
-                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Add a comment</h2>
-          <textarea
-            className="min-h-[100px] w-full rounded-md border bg-background p-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="What are your thoughts on this idea?"
-          ></textarea>
-          <div className="mt-2 flex justify-end">
-            <button className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1">
-              Comment
-            </button>
-          </div>
-        </div>
+        <div className="container mx-auto px-4 py-6 md:px-6 lg:px-8">
+          <Tabs defaultValue="discussion" className="w-full">
+            <TabsList className="border-b w-full mb-8">
+              <TabsTrigger 
+                value="discussion" 
+                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Discussion</span>
+                  <span className="text-xs text-muted-foreground">{commentCount}</span>
+                </div>
+              </TabsTrigger>
+              
 
-        <div>
-          <h2 className="mb-4 text-lg font-semibold">Discussion ({comments.length})</h2>
-          <div className="space-y-2">
-            <div className="flex space-x-2">
-              <button className="inline-flex h-8 items-center justify-center rounded-full border border-input bg-background px-3 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1">
-                Best
-              </button>
-              <button className="inline-flex h-8 items-center justify-center rounded-full px-3 text-xs font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1">
-                New
-              </button>
-              <button className="inline-flex h-8 items-center justify-center rounded-full px-3 text-xs font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1">
-                Top
-              </button>
-            </div>
-          </div>
-          <div className="mt-4 space-y-4">
-            {comments.map((comment) => renderComment(comment))}
-          </div>
+              
+              <TabsTrigger 
+                value="team" 
+                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span>Contributors</span>
+                  <span className="text-xs text-muted-foreground">{assignments.length}</span>
+                </div>
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="history" 
+                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              >
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  <span>History</span>
+                </div>
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Discussion Tab Content */}
+            <TabsContent value="discussion" className="mt-4">
+              <div className="bg-card rounded-lg border shadow-sm">
+                <CommentSection 
+                  comments={comments}
+                  newComment={newComment}
+                  setNewComment={setNewComment}
+                  handleSubmitComment={handleSubmitComment}
+                  isSubmitting={isSubmitting}
+                  isUserLoaded={isUserLoaded}
+                  user={user}
+                  getInitials={getInitials}
+                />
+              </div>
+            </TabsContent>
+
+
+            
+            {/* Team Tab Content */}
+            <TabsContent value="team" className="mt-4">
+              <div className="bg-card rounded-lg border shadow-sm p-6">
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  Contributors
+                </h3>
+                
+                {assignments.length > 0 ? (
+                  <div className="space-y-4">
+                    {assignments.map((assignment) => (
+                      <div key={assignment.id} className="flex items-center gap-3 p-3 border rounded-md bg-background/50">
+                        <div className="flex-shrink-0">
+                          <Avatar>
+                            <AvatarImage src={assignment.user.avatar_url} alt={assignment.user.display_name} />
+                            <AvatarFallback>{getInitials(assignment.user.display_name)}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="flex-1">
+                          <Link href={`/users/${assignment.user.id}`} className="font-medium hover:underline">
+                            {assignment.user.display_name}
+                          </Link>
+                          <p className="text-sm text-muted-foreground">
+                            Assigned {formatDistanceToNow(new Date(assignment.assigned_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {assignment.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No contributors have picked this idea yet.</p>
+                    {isUserLoaded && user && !isUserAssigned && (
+                      <Button
+                        variant="outline"
+                        className="mt-4"
+                        onClick={handlePickIdea}
+                        disabled={isAssigning}
+                      >
+                        {isAssigning ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Joining team...
+                          </>
+                        ) : (
+                          <>Pick this idea</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            {/* History Tab Content */}
+            <TabsContent value="history" className="mt-4">
+              <div className="bg-card rounded-lg border shadow-sm">
+                <HistoryTab 
+                  assignments={assignments}
+                  getInitials={getInitials}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </MainLayout>
   );
-};
-
-export default IdeaDetailPage;
+}

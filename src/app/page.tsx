@@ -1,8 +1,12 @@
+"use client"
+
 import Image from "next/image";
+import { Navbar } from "@/components/navbar";
 
 export default function Home() {
   return (
     <div className="min-h-screen">
+      <Navbar isTransparent={true} />
       <div className="bg-gradient-to-b from-background to-muted pb-16 pt-24">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center space-y-4 text-center">
@@ -20,7 +24,7 @@ export default function Home() {
                   Explore Ideas
                 </button>
               </a>
-              <a href="/auth/signup">
+              <a href="/sign-up">
                 <button className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
                   Sign Up
                 </button>
@@ -31,7 +35,7 @@ export default function Home() {
       </div>
 
       <div className="container px-4 py-12 md:px-6 md:py-24">
-        <div className="grid gap-6 lg:grid-cols-3 lg:gap-12">
+        <div className="grid gap-6 lg:grid-cols-4 lg:gap-8">
           <div className="space-y-4 rounded-xl border bg-card p-6 shadow-sm">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <svg
@@ -100,6 +104,28 @@ export default function Home() {
               Discover and share tools that enhance productivity. Our AI assistant suggests tool combinations based on your specific needs.
             </p>
           </div>
+          <div className="space-y-4 rounded-xl border bg-card p-6 shadow-sm">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold">Feature Requests</h3>
+            <p className="text-muted-foreground">
+              Submit and vote on feature requests to help shape the future of the platform based on community needs.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -114,7 +140,7 @@ export default function Home() {
                 Join your team and start creating, sharing, and building together.
               </p>
             </div>
-            <a href="/auth/signup">
+            <a href="/sign-up">
               <button className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
                 Get Started
               </button>

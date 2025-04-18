@@ -1,0 +1,107 @@
+{
+  "ideas": [
+    {
+      "id": 1,
+      "title": "Mobile App Redesign",
+      "description": "Revamp our mobile app interface with a more intuitive navigation and modern design elements. The current design is feeling dated and users are struggling with the navigation flow. I propose we take inspiration from some of the top productivity apps that have excellent UX/UI.",
+      "author": "Alex Chen",
+      "date": "2 days ago",
+      "commentCount": 8,
+      "upvotes": 24,
+      "tags": ["Design", "Mobile", "UX/UI"]
+    },
+    {
+      "id": 2,
+      "title": "Customer Feedback System",
+      "description": "Implement a streamlined process for collecting and analyzing customer feedback across all platforms. This would help us identify pain points and prioritize improvements more effectively.",
+      "author": "Jamie Taylor",
+      "date": "3 days ago",
+      "commentCount": 12,
+      "upvotes": 18,
+      "tags": ["Product", "Research", "Customer Experience"]
+    },
+    {
+      "id": 3,
+      "title": "AI-Powered Content Recommendations",
+      "description": "Create a machine learning algorithm that suggests relevant content based on user behavior and preferences. This could significantly improve engagement and retention rates.",
+      "author": "Morgan Smith",
+      "date": "5 days ago",
+      "commentCount": 15,
+      "upvotes": 32,
+      "tags": ["AI", "Content", "Personalization"]
+    },
+    {
+      "id": 4,
+      "title": "Cross-Platform Integration Framework",
+      "description": "Build a framework that allows seamless integration between our various software products and third-party tools. This would enhance workflow efficiency and create a more unified user experience.",
+      "author": "Riley Johnson",
+      "date": "1 week ago",
+      "commentCount": 7,
+      "upvotes": 21,
+      "tags": ["Development", "Integration", "Architecture"]
+    },
+    {
+      "id": 5,
+      "title": "Automated Test Suite Enhancement",
+      "description": "Develop a more comprehensive automated testing system to improve code quality and reduce bugs in production. Focusing on both unit and integration tests would help us catch issues earlier in the development cycle.",
+      "author": "Taylor Lee",
+      "date": "1 week ago",
+      "commentCount": 9,
+      "upvotes": 15,
+      "tags": ["Testing", "Quality Assurance", "Automation"]
+    }
+  ],
+  "comments": [
+    {
+      "id": 1,
+      "ideaId": 1,
+      "author": "Jamie Taylor",
+      "content": "I completely agree with this. Our user testing showed that the navigation is the biggest pain point. We should prioritize that first.",
+      "date": "1 day ago",
+      "upvotes": 12,
+      "replies": [
+        {
+          "id": 101,
+          "author": "Alex Chen",
+          "content": "Great point! I was thinking we could start with a navigation prototype in Figma to get early feedback.",
+          "date": "1 day ago",
+          "upvotes": 8
+        },
+        {
+          "id": 102,
+          "author": "Morgan Smith",
+          "content": "We also need to consider accessibility improvements in the redesign. The current contrast ratios don't meet WCAG standards.",
+          "date": "22 hours ago",
+          "upvotes": 6,
+          "replies": [
+            {
+              "id": 1021,
+              "author": "Riley Johnson",
+              "content": "I can help with the accessibility audit. I've been working on creating a comprehensive checklist for our projects.",
+              "date": "20 hours ago",
+              "upvotes": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "ideaId": 1,
+      "author": "Taylor Lee",
+      "content": "Have we considered bringing in a dedicated UX designer for this project? It might be worth the investment for such a critical piece of our product.",
+      "date": "1 day ago",
+      "upvotes": 9,
+      "replies": []
+    },
+    {
+      "id": 3,
+      "ideaId": 1,
+      "author": "Sam Wilson",
+      "content": "I'd like to see us incorporate some of the feedback from our customer support team. They hear directly from users about pain points.",
+      "date": "18 hours ago",
+      "upvotes": 7,
+      "replies": []
+    }
+  ]
+}

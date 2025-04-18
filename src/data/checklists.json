@@ -1,0 +1,60 @@
+{
+  "checklists": [
+    {
+      "id": 1,
+      "title": "Q2 Marketing Campaign",
+      "progress": 60,
+      "items": [
+        { "id": 1, "text": "Define campaign objectives", "completed": true },
+        { "id": 2, "text": "Create content calendar", "completed": true },
+        { "id": 3, "text": "Design social media assets", "completed": true },
+        { "id": 4, "text": "Prepare email templates", "completed": false },
+        { "id": 5, "text": "Set up analytics tracking", "completed": false }
+      ],
+      "collaborators": ["Alex", "Jamie", "Sam"],
+      "lastUpdated": "2h ago"
+    },
+    {
+      "id": 2,
+      "title": "Product Launch",
+      "progress": 40,
+      "items": [
+        { "id": 1, "text": "Finalize feature set", "completed": true },
+        { "id": 2, "text": "Complete user testing", "completed": true },
+        { "id": 3, "text": "Prepare press release", "completed": false },
+        { "id": 4, "text": "Update documentation", "completed": false },
+        { "id": 5, "text": "Coordinate with sales team", "completed": false }
+      ],
+      "collaborators": ["Taylor", "Morgan", "Riley"],
+      "lastUpdated": "5h ago"
+    },
+    {
+      "id": 3,
+      "title": "Website Redesign",
+      "progress": 75,
+      "items": [
+        { "id": 1, "text": "Competitor analysis", "completed": true },
+        { "id": 2, "text": "Create wireframes", "completed": true },
+        { "id": 3, "text": "Design high-fidelity mockups", "completed": true },
+        { "id": 4, "text": "Frontend implementation", "completed": false },
+        { "id": 5, "text": "QA and testing", "completed": false }
+      ],
+      "collaborators": ["Alex", "Casey", "Riley"],
+      "lastUpdated": "1d ago"
+    },
+    {
+      "id": 4,
+      "title": "Client Pitch Preparation",
+      "progress": 30,
+      "items": [
+        { "id": 1, "text": "Research client background", "completed": true },
+        { "id": 2, "text": "Identify pain points", "completed": true },
+        { "id": 3, "text": "Create presentation slides", "completed": false },
+        { "id": 4, "text": "Prepare demo materials", "completed": false },
+        { "id": 5, "text": "Run presentation rehearsal", "completed": false }
+      ],
+      "collaborators": ["Jamie", "Sam", "Morgan"],
+      "lastUpdated": "3h ago"
+    }
+  ]
+}

@@ -1,0 +1,306 @@
+GitHub-style CSS for ideas page
+
+.github-style {
+  --color-header-bg: #f6f8fa;
+  --color-border-muted: #d0d7de;
+  --color-accent-emphasis: #0969da;
+  --color-fg-subtle: #6e7781;
+  --color-fg-default: #24292f;
+  --color-canvas-subtle: #f6f8fa;
+  --color-success-emphasis: #2da44e;
+  --color-danger: #cf222e;
+}
+
+/* Fix text colors */
+.github-style {
+  color: var(--color-fg-default);
+}
+
+.github-style h1,
+.github-style h2,
+.github-style h3,
+.github-style h4 {
+  color: var(--color-fg-default);
+}
+
+.github-style .text-muted-foreground {
+  color: var(--color-fg-subtle);
+}
+
+.github-style .border-b {
+  border-bottom-color: var(--color-border-muted);
+}
+
+.github-style .bg-muted\/30 {
+  background-color: var(--color-canvas-subtle);
+}
+
+/* GitHub-style navigation */
+.github-style nav {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+}
+
+.github-style nav a.border-primary {
+  border-color: var(--color-accent-emphasis);
+  color: var(--color-accent-emphasis);
+}
+
+.github-style nav a:hover {
+  color: var(--color-accent-emphasis);
+  border-color: var(--color-border-muted);
+}
+
+/* Tab navigation */
+.github-style .active-tab {
+  color: #24292f;
+  font-weight: 600;
+}
+
+.github-style .inactive-tab {
+  color: #57606a;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+.github-style .inactive-tab:hover {
+  border-bottom-color: var(--color-border-muted);
+  color: var(--color-fg-default);
+}
+
+/* Voting buttons */
+.github-style .vote-button {
+  transition-property: color, background-color, border-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  border-color: #d0d7de;
+}
+
+.github-style .vote-button:hover {
+  background-color: #f3f4f6;
+}
+
+.github-style .vote-button.upvoted {
+  color: #1a7f37;
+  border-color: #1a7f37;
+  background-color: #ecfdf0;
+}
+.dark .github-style .vote-button.upvoted {
+  background-color: rgba(35, 134, 54, 0.15);
+}
+
+.github-style .vote-button.downvoted {
+  color: #cf222e;
+  border-color: #cf222e;
+  background-color: #FFEBE9;
+}
+.dark .github-style .vote-button.downvoted {
+  background-color: rgba(248, 81, 73, 0.15);
+}
+
+/* GitHub-style comment thread */
+.github-style .comment-header {
+  background-color: var(--color-canvas-subtle);
+  border-bottom: 1px solid var(--color-border-muted);
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  color: var(--color-fg-default);
+}
+
+.github-style .comment-body {
+  color: #24292f;
+}
+.dark .github-style .comment-body {
+  color: #e6edf3;
+}
+
+/* GitHub-style buttons */
+.github-style .gh-button {
+  border-radius: 6px;
+  padding: 5px 16px;
+  font-size: 14px;
+  line-height: 20px;
+  border: 1px solid var(--color-border-muted);
+  background-color: var(--color-canvas-subtle);
+  color: var(--color-fg-default);
+}
+
+.github-style .gh-button:hover {
+  background-color: #f3f4f6;
+}
+
+.github-style .gh-button-primary {
+  background-color: var(--color-success-emphasis);
+  color: white;
+  border-color: var(--color-success-emphasis);
+}
+
+.github-style .gh-button-primary:hover {
+  background-color: #2c974b;
+}
+
+/* GitHub-style issue status badges */
+.github-style .status-badge {
+  border-radius: 2em;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  display: inline-block;
+}
+
+.github-style .status-open {
+  background-color: var(--color-success-emphasis);
+  color: white;
+}
+
+.github-style .status-closed {
+  background-color: #cf222e;
+  color: white;
+}
+
+/* Markdown body styling */
+.github-markdown-body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-fg-default);
+}
+
+.github-markdown-body h1,
+.github-markdown-body h2,
+.github-markdown-body h3 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.github-markdown-body code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 85%;
+  background-color: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+}
+
+.github-markdown-body pre {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: var(--color-canvas-subtle);
+  border-radius: 6px;
+}
+
+/* Styling for main content areas */
+.github-style .prose {
+  color: #24292f;
+}
+.dark .github-style .prose {
+  color: #e6edf3;
+}
+
+/* Profile name styling */
+.github-style .profile-name {
+  color: #24292f;
+  font-weight: 500;
+}
+.dark .github-style .profile-name {
+  color: #e6edf3;
+}
+
+/* Badge/tag styling */
+.github-style .badge {
+  background-color: rgba(175, 184, 193, 0.2);
+  color: #24292f;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}
+.dark .github-style .badge {
+  color: #e6edf3;
+}
+
+/* Checkboxes */
+.github-style .checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition-property: background-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+.github-style .checkbox-item:hover {
+  background-color: rgba(175, 184, 193, 0.1);
+}
+
+/* Timeline styling for history tab */
+.github-style .timeline-item {
+  position: relative;
+  padding-left: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-left: 1px solid #d0d7de;
+  display: flex;
+}
+
+.github-style .timeline-item:last-child {
+  border-left: 0;
+}
+
+.github-style .timeline-dot {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+  background-color: #0969da;
+}
+
+/* Fix scrollbars */
+.github-style ::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.github-style ::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-muted);
+  border-radius: 4px;
+}
+
+.github-style ::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* GitHub Timeline */
+.github-style .timeline-item {
+  position: relative;
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+
+.github-style .timeline-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background-color: var(--color-border-muted);
+}
+
+.github-style .timeline-badge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: white;
+  border: 2px solid var(--color-accent-emphasis);
+  z-index: 1;
+}

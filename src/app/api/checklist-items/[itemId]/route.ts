@@ -1,12 +1,26 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { NextResponse, NextRequest } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+
+// Define types for our database responses
+interface ChecklistItem {
+  id: string;
+  checklist_id: string;
+  text: string;
+  position: number;
+  completed: boolean;
+  completed_by: string | null;
+  completed_at: string | null;
+  checklists?: {
+    creator_id: string;
+  };
+}
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { itemId: string } }
 ) {
-  const { userId } = auth();
+  const { userId } = await auth();
   const itemId = params.itemId;
   
   if (!userId) {
@@ -57,10 +71,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { itemId: string } }
 ) {
-  const { userId } = auth();
+  const { userId } = await auth();
   const itemId = params.itemId;
   
   if (!userId) {
@@ -77,7 +91,7 @@ export async function DELETE(
       .from('checklist_items')
       .select(`
         checklist_id,
-        user_checklists!inner(user_id)
+        checklists:checklist_id(creator_id)
       `)
       .eq('id', itemId)
       .single();
@@ -86,7 +100,11 @@ export async function DELETE(
       throw itemError;
     }
 
-    if (item.user_checklists.user_id !== userId) {
+    // Use a safer approach with proper typing
+    const checklist = (item as unknown as any).checklists;
+    
+    // Check if the user is the creator of the checklist
+    if (!checklist || !checklist.creator_id || checklist.creator_id !== userId) {
       return NextResponse.json({ error: 'Only the checklist owner can delete items' }, { status: 403 });
     }
 

@@ -2,20 +2,19 @@ import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
+// ✅ This is how Next.js expects the second arg to be typed
+type Params = { params: { itemId: string } };
+
 // PATCH: Update checklist item
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  context: Params
 ): Promise<Response> {
   const { userId } = await auth();
-  const itemId = params.itemId;
+  const itemId = context.params.itemId;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!itemId) {
-    return NextResponse.json({ error: 'Item ID is required' }, { status: 400 });
   }
 
   try {
@@ -43,13 +42,13 @@ export async function PATCH(
   }
 }
 
-// DELETE: Remove checklist item (only by owner)
+// DELETE: Remove checklist item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { itemId: string } }
+  context: Params
 ): Promise<Response> {
   const { userId } = await auth();
-  const itemId = params.itemId;
+  const itemId = context.params.itemId;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

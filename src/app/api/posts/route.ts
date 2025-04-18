@@ -1,99 +1,80 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-// GET: Fetch all posts
-export async function GET(request: Request) {
+// GET: Fetch all posts (public, private, or user-specific)
+export async function GET(request: NextRequest): Promise<Response> {
   try {
     const { searchParams } = new URL(request.url);
     const onlyMine = searchParams.get('onlyMine') === 'true';
     const searchQuery = searchParams.get('search')?.trim();
-    
+
     const session = await auth();
     const userId = session?.userId;
 
-    // Base query to get public posts
     let query = supabase
       .from('posts')
       .select(`
         *,
         comments:post_comments(count)
       `)
-      .eq('is_public', true)
       .order('created_at', { ascending: false });
 
-    // If user is logged in and requesting only their posts
+    // Auth logic
     if (userId && onlyMine) {
-      query = supabase
-        .from('posts')
-        .select(`
-          *,
-          comments:post_comments(count)
-        `)
-        .eq('creator_id', userId)
-        .order('created_at', { ascending: false });
-    } 
-    // If user is logged in, also include their private posts
-    else if (userId) {
-      query = supabase
-        .from('posts')
-        .select(`
-          *,
-          comments:post_comments(count)
-        `)
-        .or(`is_public.eq.true,creator_id.eq.${userId}`)
-        .order('created_at', { ascending: false });
+      query = query.eq('creator_id', userId);
+    } else if (userId) {
+      query = query.or(`is_public.eq.true,creator_id.eq.${userId}`);
+    } else {
+      query = query.eq('is_public', true);
     }
 
-    // Add search filter if search query is provided
-    if (searchQuery && searchQuery.length > 0) {
-      // Create search filters for title, description, and content
-      const titleFilter = `title.ilike.%${searchQuery}%`;
-      const descriptionFilter = `description.ilike.%${searchQuery}%`;
-      const contentFilter = `content.ilike.%${searchQuery}%`;
-      
-      // Add OR filter for the search term across multiple columns
-      query = query.or(`${titleFilter},${descriptionFilter},${contentFilter}`);
+    // Search filter
+    if (searchQuery) {
+      query = query.or(`
+        title.ilike.%${searchQuery}%,
+        description.ilike.%${searchQuery}%,
+        content.ilike.%${searchQuery}%
+      `);
     }
 
     const { data, error } = await query;
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
-    // After fetching posts, manually enrich with creator info
-    const formattedPosts = await Promise.all(data.map(async (post) => {
-      // Get creator info from users table for each post
-      const { data: creatorData, error: creatorError } = await supabase
-        .from('users')
-        .select('display_name, avatar_url')
-        .eq('id', post.creator_id)
-        .single();
-        
-      if (creatorError) {
-        console.log(`Error fetching creator data for post ${post.id}:`, creatorError);
-      }
-      
-      return {
-        ...post,
-        creator: {
-          id: post.creator_id,
-          display_name: creatorData?.display_name || 'Anonymous',
-          avatar_url: creatorData?.avatar_url || ''
+    // Enrich posts with creator profile
+    const posts = await Promise.all(
+      (data || []).map(async (post) => {
+        const { data: creator, error: creatorError } = await supabase
+          .from('users')
+          .select('display_name, avatar_url')
+          .eq('id', post.creator_id)
+          .single();
+
+        if (creatorError) {
+          console.warn(`Error loading user for post ${post.id}:`, creatorError);
         }
-      };
-    }));
 
-    return NextResponse.json(formattedPosts);
+        return {
+          ...post,
+          creator: {
+            id: post.creator_id,
+            display_name: creator?.display_name || 'Anonymous',
+            avatar_url: creator?.avatar_url || '',
+          },
+        };
+      })
+    );
+
+    return NextResponse.json(posts);
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    console.error('GET posts error:', error);
     return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
   }
 }
 
 // POST: Create a new post
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<Response> {
   try {
     const session = await auth();
     const userId = session?.userId;
@@ -104,11 +85,10 @@ export async function POST(request: Request) {
 
     const { title, description, content, is_public } = await request.json();
 
-    if (!title) {
+    if (!title || title.trim() === '') {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    // Get user's information before creating the post
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('display_name, avatar_url')
@@ -116,44 +96,37 @@ export async function POST(request: Request) {
       .single();
 
     if (userError) {
-      console.log('Error fetching user data:', userError);
-      // Continue with default values if there's an error
+      console.warn('Could not fetch user data for new post:', userError);
     }
 
-    // Create the post with the current schema (no creator_name/avatar)
-    const { data, error } = await supabase
+    const { data: post, error } = await supabase
       .from('posts')
       .insert([
         {
           title,
           description: description || '',
           content: content || '',
+          is_public: is_public ?? true,
           creator_id: userId,
-          is_public: is_public === undefined ? true : is_public,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ])
       .select()
       .single();
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
-    // Return the post with manually added creator information
-    const formattedPost = {
-      ...data,
+    return NextResponse.json({
+      ...post,
       creator: {
         id: userId,
         display_name: userData?.display_name || 'Anonymous',
-        avatar_url: userData?.avatar_url || ''
-      }
-    };
-
-    return NextResponse.json(formattedPost);
+        avatar_url: userData?.avatar_url || '',
+      },
+    });
   } catch (error) {
-    console.error('Error creating post:', error);
+    console.error('POST post error:', error);
     return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
   }
 }

@@ -1,26 +1,21 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// GET: Fetch a specific checklist with its items
+// GET: Fetch a specific checklist with its items and progress
 export async function GET(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   const session = await auth();
   const userId = session?.userId;
-  const checklistId = context.params.id;
-  
+  const { id: checklistId } = await params;
+
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!checklistId) {
-    return NextResponse.json({ error: 'Checklist ID is required' }, { status: 400 });
-  }
-
   try {
-    // Get the checklist with its items
     const { data, error } = await supabase
       .from('checklists')
       .select(`
@@ -34,22 +29,14 @@ export async function GET(
       .eq('id', checklistId)
       .single();
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
-    // Check if user is authorized to view this checklist
     const isOwner = data.creator_id === userId;
-    
-    // If it's a personal checklist, only the creator can view it
+
     if (!data.is_shared && !isOwner) {
-      return NextResponse.json(
-        { error: 'You are not authorized to view this checklist' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // If it's a shared checklist, check if user is assigned to the idea
     if (data.is_shared && !isOwner) {
       const { data: assignment, error: assignmentError } = await supabase
         .from('idea_assignments')
@@ -59,16 +46,12 @@ export async function GET(
         .single();
 
       if (assignmentError || !assignment) {
-        return NextResponse.json(
-          { error: 'You are not authorized to view this checklist' },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
 
-    // Calculate progress
-    const totalItems = data.checklist_items.length;
-    const completedItems = data.checklist_items.filter((item: any) => item.completed).length;
+    const totalItems = data.checklist_items?.length || 0;
+    const completedItems = data.checklist_items?.filter((item: any) => item.completed)?.length || 0;
     const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
     return NextResponse.json({
@@ -81,63 +64,48 @@ export async function GET(
   }
 }
 
-// DELETE: Delete a checklist and all its items
+// DELETE: Delete a checklist and related data
 export async function DELETE(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
   const session = await auth();
   const userId = session?.userId;
-  const checklistId = context.params.id;
-  
+  const { id: checklistId } = await params;
+
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!checklistId) {
-    return NextResponse.json({ error: 'Checklist ID is required' }, { status: 400 });
-  }
-
   try {
-    // Get the checklist to verify ownership
     const { data: checklist, error: checklistError } = await supabase
       .from('checklists')
       .select('*')
       .eq('id', checklistId)
       .single();
 
-    if (checklistError) {
-      throw checklistError;
-    }
+    if (checklistError) throw checklistError;
 
-    // Only the creator can delete a checklist
     if (checklist.creator_id !== userId) {
-      return NextResponse.json(
-        { error: 'You are not authorized to delete this checklist' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // First, delete any references in the activity_log table
     const { error: activityLogError } = await supabase
       .from('activity_log')
       .delete()
       .eq('checklist_id', checklistId);
 
     if (activityLogError) {
-      console.error('Error deleting activity log entries:', activityLogError);
-      // Continue even if there's an error with activity log deletion
+      console.warn('Failed to delete activity log entries:', activityLogError);
+      // Not throwing here so we can still delete the checklist
     }
 
-    // Delete the checklist (items will be cascaded due to FK constraints)
     const { error: deleteError } = await supabase
       .from('checklists')
       .delete()
       .eq('id', checklistId);
 
-    if (deleteError) {
-      throw deleteError;
-    }
+    if (deleteError) throw deleteError;
 
     return NextResponse.json({ success: true });
   } catch (error) {

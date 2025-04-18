@@ -13,7 +13,7 @@ export async function GET(
   }
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Check tool existence
     const { data: toolExists, error: checkError } = await supabase
@@ -101,7 +101,7 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('tool_power_users')

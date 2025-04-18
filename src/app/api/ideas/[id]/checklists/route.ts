@@ -1,83 +1,54 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
+// GET: Fetch personal & shared checklists for an idea
 export async function GET(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const { id: ideaId } = await params;
   const session = await auth();
   const userId = session?.userId;
-  const { id: ideaId } = await context.params;
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
-  if (!ideaId) {
-    return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ideaId) return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
 
   try {
-    // Get personal checklists (owned by the user)
-    const { data: personalChecklists, error: personalError } = await supabase
-      .from('checklists')
-      .select(`
-        *,
-        checklist_items(*)
-      `)
-      .eq('idea_id', ideaId)
-      .eq('creator_id', userId)
-      .eq('is_shared', false);
+    const [personalChecklistsRes, sharedChecklistsRes] = await Promise.all([
+      supabase
+        .from('checklists')
+        .select('*, checklist_items(*)')
+        .eq('idea_id', ideaId)
+        .eq('creator_id', userId)
+        .eq('is_shared', false),
 
-    if (personalError) {
-      throw personalError;
-    }
-
-    // Get shared checklists (visible to all collaborators)
-    const { data: sharedChecklists, error: sharedError } = await supabase
-      .from('checklists')
-      .select(`
-        *,
-        checklist_items(
+      supabase
+        .from('checklists')
+        .select(`
           *,
-          completed_by_user:completed_by(display_name, avatar_url)
-        ),
-        owner:creator_id(display_name, avatar_url)
-      `)
-      .eq('idea_id', ideaId)
-      .eq('is_shared', true);
+          checklist_items(*, completed_by_user:completed_by(display_name, avatar_url)),
+          owner:creator_id(display_name, avatar_url)
+        `)
+        .eq('idea_id', ideaId)
+        .eq('is_shared', true),
+    ]);
 
-    if (sharedError) {
-      throw sharedError;
+    if (personalChecklistsRes.error || sharedChecklistsRes.error) {
+      throw personalChecklistsRes.error || sharedChecklistsRes.error;
     }
 
-    // Calculate progress for each checklist
-    const processedPersonalChecklists = personalChecklists.map((checklist: any) => {
-      const totalItems = checklist.checklist_items.length;
-      const completedItems = checklist.checklist_items.filter((item: any) => item.completed).length;
-      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-      
-      return {
-        ...checklist,
-        progress
-      };
-    });
-
-    const processedSharedChecklists = sharedChecklists.map((checklist: any) => {
-      const totalItems = checklist.checklist_items.length;
-      const completedItems = checklist.checklist_items.filter((item: any) => item.completed).length;
-      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-      
-      return {
-        ...checklist,
-        progress
-      };
-    });
+    const addProgress = (checklists: any[]) =>
+      checklists.map((cl) => {
+        const total = cl.checklist_items.length;
+        const completed = cl.checklist_items.filter((item: any) => item.completed).length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { ...cl, progress };
+      });
 
     return NextResponse.json({
-      personalChecklists: processedPersonalChecklists,
-      sharedChecklists: processedSharedChecklists
+      personalChecklists: addProgress(personalChecklistsRes.data || []),
+      sharedChecklists: addProgress(sharedChecklistsRes.data || []),
     });
   } catch (error) {
     console.error('Error fetching checklists:', error);
@@ -85,21 +56,17 @@ export async function GET(
   }
 }
 
+// POST: Create a new checklist for an idea
 export async function POST(
-  request: Request,
-  context: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const { id: ideaId } = await params;
   const session = await auth();
   const userId = session?.userId;
-  const { id: ideaId } = await context.params;
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
-  if (!ideaId) {
-    return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
-  }
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ideaId) return NextResponse.json({ error: 'Idea ID is required' }, { status: 400 });
 
   try {
     const { title, isShared, items } = await request.json();
@@ -108,63 +75,51 @@ export async function POST(
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    // Insert the checklist
+    // Create checklist
     const { data: checklist, error: checklistError } = await supabase
       .from('checklists')
-      .insert([
-        {
-          idea_id: ideaId,
-          creator_id: userId,
-          title,
-          is_shared: isShared || false
-        }
-      ])
+      .insert({
+        idea_id: ideaId,
+        creator_id: userId,
+        title,
+        is_shared: isShared ?? false,
+      })
       .select()
       .single();
 
-    if (checklistError) {
-      throw checklistError;
-    }
+    if (checklistError) throw checklistError;
 
-    // If there are items, insert them
-    if (items && items.length > 0) {
+    // Insert checklist items
+    if (Array.isArray(items) && items.length > 0) {
       const checklistItems = items.map((item: string | { text: string }) => ({
         checklist_id: checklist.id,
         text: typeof item === 'string' ? item : item.text,
-        completed: false
+        completed: false,
       }));
 
       const { error: itemsError } = await supabase
         .from('checklist_items')
         .insert(checklistItems);
 
-      if (itemsError) {
-        throw itemsError;
-      }
+      if (itemsError) throw itemsError;
     }
 
-    // Return the created checklist with items
+    // Refetch with checklist_items
     const { data: fullChecklist, error: fetchError } = await supabase
       .from('checklists')
-      .select(`
-        *,
-        checklist_items(*)
-      `)
+      .select('*, checklist_items(*)')
       .eq('id', checklist.id)
       .single();
 
-    if (fetchError) {
-      throw fetchError;
-    }
+    if (fetchError) throw fetchError;
 
-    // Calculate progress
-    const totalItems = fullChecklist.checklist_items.length;
-    const completedItems = fullChecklist.checklist_items.filter((item: { completed: boolean }) => item.completed).length;
-    const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    const total = fullChecklist.checklist_items.length;
+    const completed = fullChecklist.checklist_items.filter((i: any) => i.completed).length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return NextResponse.json({
       ...fullChecklist,
-      progress
+      progress,
     });
   } catch (error) {
     console.error('Error creating checklist:', error);

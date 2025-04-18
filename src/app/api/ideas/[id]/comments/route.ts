@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase';
-import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+function calculateProgress(checklistItems: any[]) {
+  const total = checklistItems.length;
+  const done = checklistItems.filter(item => item.completed).length;
+  return total > 0 ? Math.round((done / total) * 100) : 0;
+}
 
 // GET: Fetch personal & shared checklists for an idea
 export async function GET(
@@ -20,7 +26,7 @@ export async function GET(
   }
 
   try {
-    const [personal, shared] = await Promise.all([
+    const [personalRes, sharedRes] = await Promise.all([
       supabase
         .from('checklists')
         .select('*, checklist_items(*)')
@@ -39,21 +45,19 @@ export async function GET(
         .eq('is_shared', true),
     ]);
 
-    if (personal.error || shared.error) {
-      throw personal.error || shared.error;
+    if (personalRes.error || sharedRes.error) {
+      throw personalRes.error || sharedRes.error;
     }
 
-    const withProgress = (checklists: any[]) =>
-      checklists.map((cl) => {
-        const total = cl.checklist_items.length;
-        const done = cl.checklist_items.filter((i: any) => i.completed).length;
-        const progress = total > 0 ? Math.round((done / total) * 100) : 0;
-        return { ...cl, progress };
-      });
+    const formatWithProgress = (list: any[]) =>
+      list.map(cl => ({
+        ...cl,
+        progress: calculateProgress(cl.checklist_items),
+      }));
 
     return NextResponse.json({
-      personalChecklists: withProgress(personal.data || []),
-      sharedChecklists: withProgress(shared.data || []),
+      personalChecklists: formatWithProgress(personalRes.data ?? []),
+      sharedChecklists: formatWithProgress(sharedRes.data ?? []),
     });
   } catch (error) {
     console.error('GET checklists error:', error);
@@ -77,11 +81,11 @@ export async function POST(
   try {
     const { title, isShared, items } = await request.json();
 
-    if (!title) {
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    if (!title || typeof title !== 'string') {
+      return NextResponse.json({ error: 'Checklist title is required' }, { status: 400 });
     }
 
-    // Create checklist
+    // Step 1: Create checklist
     const { data: checklist, error: checklistError } = await supabase
       .from('checklists')
       .insert({
@@ -95,22 +99,22 @@ export async function POST(
 
     if (checklistError) throw checklistError;
 
-    // Insert items if provided
+    // Step 2: Insert checklist items (if any)
     if (Array.isArray(items) && items.length > 0) {
-      const insertItems = items.map((item: string | { text: string }) => ({
+      const checklistItems = items.map((item: string | { text: string }) => ({
         checklist_id: checklist.id,
         text: typeof item === 'string' ? item : item.text,
         completed: false,
       }));
 
-      const { error: itemsError } = await supabase
+      const { error: itemError } = await supabase
         .from('checklist_items')
-        .insert(insertItems);
+        .insert(checklistItems);
 
-      if (itemsError) throw itemsError;
+      if (itemError) throw itemError;
     }
 
-    // Fetch full checklist with items
+    // Step 3: Fetch full checklist with items
     const { data: fullChecklist, error: fetchError } = await supabase
       .from('checklists')
       .select('*, checklist_items(*)')
@@ -119,11 +123,10 @@ export async function POST(
 
     if (fetchError) throw fetchError;
 
-    const total = fullChecklist.checklist_items.length;
-    const completed = fullChecklist.checklist_items.filter((i: any) => i.completed).length;
-    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return NextResponse.json({ ...fullChecklist, progress });
+    return NextResponse.json({
+      ...fullChecklist,
+      progress: calculateProgress(fullChecklist.checklist_items),
+    });
   } catch (error) {
     console.error('POST checklist error:', error);
     return NextResponse.json({ error: 'Failed to create checklist' }, { status: 500 });

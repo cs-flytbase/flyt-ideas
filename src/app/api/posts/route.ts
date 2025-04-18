@@ -1,26 +1,22 @@
 import { supabase } from '@/lib/supabase';
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
-// GET: Fetch all posts (public, private, or user-specific)
+// GET: Fetch all posts (public, user-specific, or private)
 export async function GET(request: NextRequest): Promise<Response> {
   try {
     const { searchParams } = new URL(request.url);
     const onlyMine = searchParams.get('onlyMine') === 'true';
     const searchQuery = searchParams.get('search')?.trim();
 
-    const session = await auth();
-    const userId = session?.userId;
+    const { userId } = await auth();
 
     let query = supabase
       .from('posts')
-      .select(`
-        *,
-        comments:post_comments(count)
-      `)
+      .select('*, comments:post_comments(count)')
       .order('created_at', { ascending: false });
 
-    // Auth logic
+    // Filter based on auth and privacy
     if (userId && onlyMine) {
       query = query.eq('creator_id', userId);
     } else if (userId) {
@@ -29,7 +25,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       query = query.eq('is_public', true);
     }
 
-    // Search filter
+    // Optional search filter
     if (searchQuery) {
       query = query.or(`
         title.ilike.%${searchQuery}%,
@@ -39,21 +35,16 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    // Enrich posts with creator profile
-    const posts = await Promise.all(
+    // Attach creator profile to each post
+    const enrichedPosts = await Promise.all(
       (data || []).map(async (post) => {
-        const { data: creator, error: creatorError } = await supabase
+        const { data: creator, error: userError } = await supabase
           .from('users')
           .select('display_name, avatar_url')
           .eq('id', post.creator_id)
           .single();
-
-        if (creatorError) {
-          console.warn(`Error loading user for post ${post.id}:`, creatorError);
-        }
 
         return {
           ...post,
@@ -66,9 +57,9 @@ export async function GET(request: NextRequest): Promise<Response> {
       })
     );
 
-    return NextResponse.json(posts);
+    return NextResponse.json(enrichedPosts);
   } catch (error) {
-    console.error('GET posts error:', error);
+    console.error('GET /posts error:', error);
     return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
   }
 }
@@ -76,8 +67,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 // POST: Create a new post
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const session = await auth();
-    const userId = session?.userId;
+    const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -85,48 +75,46 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     const { title, description, content, is_public } = await request.json();
 
-    if (!title || title.trim() === '') {
+    if (!title?.trim()) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const { data: userData, error: userError } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('display_name, avatar_url')
       .eq('id', userId)
       .single();
 
     if (userError) {
-      console.warn('Could not fetch user data for new post:', userError);
+      console.warn('Warning: Failed to fetch user data for post.', userError.message);
     }
 
-    const { data: post, error } = await supabase
+    const { data: post, error: insertError } = await supabase
       .from('posts')
-      .insert([
-        {
-          title,
-          description: description || '',
-          content: content || '',
-          is_public: is_public ?? true,
-          creator_id: userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
+      .insert([{
+        title: title.trim(),
+        description: description || '',
+        content: content || '',
+        is_public: is_public ?? true,
+        creator_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }])
       .select()
       .single();
 
-    if (error) throw error;
+    if (insertError) throw insertError;
 
     return NextResponse.json({
       ...post,
       creator: {
         id: userId,
-        display_name: userData?.display_name || 'Anonymous',
-        avatar_url: userData?.avatar_url || '',
+        display_name: user?.display_name || 'Anonymous',
+        avatar_url: user?.avatar_url || '',
       },
     });
   } catch (error) {
-    console.error('POST post error:', error);
+    console.error('POST /posts error:', error);
     return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
   }
 }

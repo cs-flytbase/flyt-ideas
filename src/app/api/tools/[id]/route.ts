@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET: Fetch tool details with formatted power users
+// GET: Fetch tool with power users
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = await params;
+  const { id } = await context.params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
@@ -15,22 +15,22 @@ export async function GET(
   try {
     const supabase = await createClient();
 
-    // Check if tool exists
-    const { data: toolExists, error: checkError } = await supabase
+    // Verify tool exists
+    const { data: toolExists, error: toolCheckError } = await supabase
       .from('tools')
       .select('id')
       .eq('id', id)
       .single();
 
-    if (checkError) {
-      if (checkError.code === 'PGRST116') {
+    if (toolCheckError) {
+      if (toolCheckError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
       }
-      throw checkError;
+      throw toolCheckError;
     }
 
-    // Fetch tool with power users
-    const { data: tool, error: fetchError } = await supabase
+    // Fetch tool details with power user metadata
+    const { data: tool, error: toolFetchError } = await supabase
       .from('tools')
       .select(`
         *,
@@ -45,13 +45,14 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (fetchError || !tool) {
+    if (toolFetchError || !tool) {
       return NextResponse.json({ error: 'Failed to fetch tool details' }, { status: 500 });
     }
 
     const userIds = tool.power_users?.map((pu: any) => pu.user_id) || [];
 
-    const { data: users, error: userError } = await supabase
+    // Fetch user profiles
+    const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, display_name, avatar_url')
       .in('id', userIds);
@@ -61,6 +62,7 @@ export async function GET(
       return acc;
     }, {});
 
+    // Format power user output
     const formattedPowerUsers = (tool.power_users || []).map((pu: any) => ({
       id: pu.user_id,
       display_name: userMap[pu.user_id]?.display_name || `User ${pu.user_id.slice(0, 6)}`,
@@ -70,14 +72,14 @@ export async function GET(
       joined_at: pu.joined_at,
     }));
 
-    const { power_users, ...cleanedTool } = tool;
+    const { power_users, ...toolData } = tool;
 
     return NextResponse.json({
-      ...cleanedTool,
+      ...toolData,
       power_users: formattedPowerUsers,
     });
   } catch (error) {
-    console.error('Error in GET /power-users:', error);
+    console.error('Error in tool GET handler:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -85,16 +87,17 @@ export async function GET(
 // POST: Add a power user to a tool
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = await params;
+  const { id } = await context.params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
   }
 
   try {
-    const { user_id, expertise_level } = await request.json();
+    const body = await request.json();
+    const { user_id, expertise_level } = body;
 
     if (!user_id || !expertise_level) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -122,7 +125,7 @@ export async function POST(
       power_user: data,
     });
   } catch (error) {
-    console.error('Error in POST /power-users:', error);
+    console.error('Error in tool POST handler:', error);
     return NextResponse.json({ error: 'Failed to add power user' }, { status: 500 });
   }
 }

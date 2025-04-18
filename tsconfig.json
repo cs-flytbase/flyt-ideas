@@ -20,8 +20,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "skipLibCheck": true,
-    "suppressImplicitAnyIndexErrors": true,
-
     // 🔌 Next.js plugin for editor support
     "plugins": [
       {

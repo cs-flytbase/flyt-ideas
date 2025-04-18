@@ -5,9 +5,9 @@ import { auth } from '@clerk/nextjs/server';
 // GET: Fetch the user's current vote on a post
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = params;
+  const { id } = await params;
   const { userId } = await auth();
 
   if (!id) {
@@ -19,7 +19,6 @@ export async function GET(
   }
 
   try {
-    // Verify post access
     const { data: post, error: postError } = await supabase
       .from('posts')
       .select('is_public, creator_id')
@@ -35,7 +34,6 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch user's vote
     const { data: vote, error } = await supabase
       .from('post_votes')
       .select('vote_type')
@@ -55,9 +53,9 @@ export async function GET(
 // POST: Create, update, or remove vote
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
-  const { id } = params;
+  const { id } = await params;
   const { userId } = await auth();
 
   if (!userId) {
@@ -75,7 +73,6 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid vote type' }, { status: 400 });
     }
 
-    // Validate post access
     const { data: post, error: postError } = await supabase
       .from('posts')
       .select('is_public, creator_id, upvotes')
@@ -101,7 +98,6 @@ export async function POST(
     let action: 'created' | 'updated' | 'removed' = 'created';
 
     if (!existingVote) {
-      // Create vote
       const { error } = await supabase.from('post_votes').insert({
         post_id: id,
         user_id: userId,
@@ -109,7 +105,6 @@ export async function POST(
       });
       if (error) throw error;
     } else if (existingVote.vote_type === vote_type) {
-      // Remove vote
       const { error } = await supabase
         .from('post_votes')
         .delete()
@@ -117,7 +112,6 @@ export async function POST(
       if (error) throw error;
       action = 'removed';
     } else {
-      // Update vote
       const { error } = await supabase
         .from('post_votes')
         .update({ vote_type })
@@ -125,8 +119,6 @@ export async function POST(
       if (error) throw error;
       action = 'updated';
     }
-
-    // Optional: recalculate upvotes manually here or with Supabase triggers
 
     const { data: updatedPost, error: updateError } = await supabase
       .from('posts')

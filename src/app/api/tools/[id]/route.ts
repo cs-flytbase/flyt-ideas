@@ -1,36 +1,36 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// GET: Fetch tool with power users
+// GET: Fetch tool details with formatted power users
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<Response> {
-  const { id } = await context.params;
+  const { id } = params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
 
-    // Verify tool exists
-    const { data: toolExists, error: toolCheckError } = await supabase
+    // Check tool existence
+    const { data: toolExists, error: checkError } = await supabase
       .from('tools')
       .select('id')
       .eq('id', id)
       .single();
 
-    if (toolCheckError) {
-      if (toolCheckError.code === 'PGRST116') {
+    if (checkError) {
+      if (checkError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
       }
-      throw toolCheckError;
+      throw checkError;
     }
 
-    // Fetch tool details with power user metadata
-    const { data: tool, error: toolFetchError } = await supabase
+    // Fetch tool with power users
+    const { data: tool, error: fetchError } = await supabase
       .from('tools')
       .select(`
         *,
@@ -45,14 +45,14 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (toolFetchError || !tool) {
+    if (fetchError || !tool) {
       return NextResponse.json({ error: 'Failed to fetch tool details' }, { status: 500 });
     }
 
+    // Get profile data for power users
     const userIds = tool.power_users?.map((pu: any) => pu.user_id) || [];
 
-    // Fetch user profiles
-    const { data: users, error: usersError } = await supabase
+    const { data: users, error: userError } = await supabase
       .from('users')
       .select('id, display_name, avatar_url')
       .in('id', userIds);
@@ -62,7 +62,6 @@ export async function GET(
       return acc;
     }, {});
 
-    // Format power user output
     const formattedPowerUsers = (tool.power_users || []).map((pu: any) => ({
       id: pu.user_id,
       display_name: userMap[pu.user_id]?.display_name || `User ${pu.user_id.slice(0, 6)}`,
@@ -72,14 +71,14 @@ export async function GET(
       joined_at: pu.joined_at,
     }));
 
-    const { power_users, ...toolData } = tool;
+    const { power_users, ...cleanedTool } = tool;
 
     return NextResponse.json({
-      ...toolData,
+      ...cleanedTool,
       power_users: formattedPowerUsers,
     });
   } catch (error) {
-    console.error('Error in tool GET handler:', error);
+    console.error('Error in GET /power-users:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -87,23 +86,22 @@ export async function GET(
 // POST: Add a power user to a tool
 export async function POST(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ): Promise<Response> {
-  const { id } = await context.params;
+  const { id } = params;
 
   if (!id) {
     return NextResponse.json({ error: 'Tool ID is required' }, { status: 400 });
   }
 
   try {
-    const body = await request.json();
-    const { user_id, expertise_level } = body;
+    const { user_id, expertise_level } = await request.json();
 
     if (!user_id || !expertise_level) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createClient();
 
     const { data, error } = await supabase
       .from('tool_power_users')
@@ -125,7 +123,7 @@ export async function POST(
       power_user: data,
     });
   } catch (error) {
-    console.error('Error in tool POST handler:', error);
+    console.error('Error in POST /power-users:', error);
     return NextResponse.json({ error: 'Failed to add power user' }, { status: 500 });
   }
 }

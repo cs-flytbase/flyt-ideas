@@ -5,10 +5,10 @@ import { auth } from '@clerk/nextjs/server';
 // PATCH: Update checklist item
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ itemId: string }> }
+  { params }: { params: Promise<{ itemId: string }> }
 ): Promise<Response> {
   const { userId } = await auth();
-  const { itemId } = await context.params;
+  const { itemId } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -42,10 +42,10 @@ export async function PATCH(
 // DELETE: Remove checklist item
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ itemId: string }> }
+  { params }: { params: Promise<{ itemId: string }> }
 ): Promise<Response> {
   const { userId } = await auth();
-  const { itemId } = await context.params;
+  const { itemId } = await params;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

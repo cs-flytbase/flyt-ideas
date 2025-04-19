@@ -88,3 +88,49 @@ For help or feedback, contact the platform administrator or open an issue on the
 ---
 
 Enjoy collaborating and building great ideas with Flyt Idea!
+
+---
+
+## Database Schema Overview
+
+Flyt Idea uses a PostgreSQL database (via Supabase) with the following tables structure:
+
+### Core Tables
+
+| Table Name | Description |
+|------------|-------------|
+| `users` | Stores user profiles linked to Clerk authentication, including display name, email, avatar, and bio |
+| `ideas` | Main content table for storing ideas with title, description, status, and visibility settings |
+| `idea_collaborators` | Junction table that links users to ideas they collaborate on with specified roles |
+| `idea_assignments` | Tracks which users are assigned to (picked) which ideas, with status tracking (pending, in_progress, completed) |
+| `idea_votes` | Records user votes (upvotes/downvotes) on ideas |
+| `comments` | Stores threaded discussion comments on ideas with parent-child relationships |
+
+### Task Management
+
+| Table Name | Description |
+|------------|-------------|
+| `checklists` | Groups of tasks associated with ideas, can be personal or shared |
+| `checklist_items` | Individual tasks within checklists with completion status, assignments, and due dates |
+
+### Feature Requests System
+
+| Table Name | Description |
+|------------|-------------|
+| `feature_requests` | Stores community feature requests with title, description, category, and status |
+| `feature_request_comments` | Comments on feature requests |
+| `feature_request_tags` | Tag categories for feature requests |
+| `feature_request_to_tags` | Junction table connecting feature requests to their tags |
+| `feature_request_upvotes` | Records user upvotes on feature requests |
+
+### Content & Activity Tracking
+
+| Table Name | Description |
+|------------|-------------|
+| `posts` | General content posts outside the ideas framework |
+| `tools` | Directory of tools with descriptions, links, and votes |
+| `tool_votes` | Records user votes on tools |
+| `activity_log` | Tracks user actions across the platform (e.g., completing tasks, creating ideas) |
+| `notifications` | System notifications for users about comments, mentions, and status changes |
+
+The database uses Row-Level Security (RLS) policies to ensure data privacy and implements foreign key relationships to maintain data integrity across tables.

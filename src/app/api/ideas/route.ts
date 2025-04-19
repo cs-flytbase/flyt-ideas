@@ -65,6 +65,22 @@ export async function GET(request: NextRequest): Promise<Response> {
 
     if (collaboratedIdeasError) throw collaboratedIdeasError;
 
+    // Fetch ideas where the user is assigned (picked)
+    const { data: myPicksIdeas, error: myPicksIdeasError } = await supabase
+      .from('ideas')
+      .select('*, comments(count), users:creator_id(display_name, avatar_url), assignments:idea_assignments!inner(*)')
+      .eq('idea_assignments.user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (myPicksIdeasError) throw myPicksIdeasError;
+
+    // Remove duplicates (if the user is also the creator or collaborator)
+    const uniquePicks = (myPicksIdeas || []).filter(
+      (pick) =>
+        !myIdeas.some((idea) => idea.id === pick.id) &&
+        !collaboratedIdeas.some((idea) => idea.id === pick.id)
+    );
+
     const format = (ideas) =>
       ideas.map((idea) => ({
         ...idea,
@@ -74,6 +90,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     return NextResponse.json({
       myIdeas: format(myIdeas),
       collaboratedIdeas: format(collaboratedIdeas),
+      myPicksIdeas: format(uniquePicks),
     });
   } catch (error) {
     console.error('Error fetching ideas:', error);

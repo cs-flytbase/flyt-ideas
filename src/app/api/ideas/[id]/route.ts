@@ -27,14 +27,14 @@ export async function GET(
 
     if (ideaError || !idea) throw ideaError;
 
-    const canAccess =
-      idea.is_public ||
-      idea.creator_id === userId ||
-      idea.idea_collaborators.some((collab: any) => collab.user_id === userId);
+    // const canAccess =
+    //   idea.is_public ||
+    //   idea.creator_id === userId ||
+    //   idea.idea_collaborators.some((collab: any) => collab.user_id === userId);
 
-    if (!canAccess) {
-      return NextResponse.json({ error: 'Not authorized to view this idea' }, { status: 403 });
-    }
+    // if (!canAccess) {
+    //   return NextResponse.json({ error: 'Not authorized to view this idea' }, { status: 403 });
+    // }
 
     const { count: commentCount, error: commentError } = await supabase
       .from('comments')

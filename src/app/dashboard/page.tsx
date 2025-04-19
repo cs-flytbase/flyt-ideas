@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   ArrowUpRight,
   CheckSquare,
@@ -70,6 +71,17 @@ interface Idea {
   upvotes: number;
   created_at: string;
   updated_at: string;
+  assignments?: {
+    id: string;
+    user_id: string;
+    status: string;
+    assigned_at: string;
+    completed_at?: string;
+  }[];
+  users?: {
+    display_name: string;
+    avatar_url?: string;
+  };
 }
 
 // Type definition for a checklist
@@ -464,7 +476,7 @@ const DashboardPage = () => {
         },
         body: JSON.stringify({
           title: newChecklistTitle,
-          isShared: newChecklistType === 'shared'
+          isShared: true  // Always create shared checklists
         }),
       });
       
@@ -855,23 +867,41 @@ const DashboardPage = () => {
                               </Link>
                               <Badge variant="outline" className="ml-2 text-[10px] font-normal">{idea.upvotes} upvotes</Badge>
                             </h3>
-                            <Badge className="text-[10px] capitalize px-1.5 py-0 h-4 bg-blue-100 text-blue-800 hover:bg-blue-100">
-                              Picked
+                            <Badge className={`text-[10px] capitalize px-1.5 py-0 h-4 
+                              ${idea.assignments[0]?.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : 
+                                idea.assignments[0]?.status === 'in_progress' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : 
+                                idea.assignments[0]?.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-100' : 
+                                'bg-blue-100 text-blue-800 hover:bg-blue-100'
+                              }`}
+                            >
+                              {idea.assignments[0]?.status ? idea.assignments[0].status.replace('_', ' ') : 'Assigned'}
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-1">{idea.description}</p>
                           <div className="flex justify-between items-center mt-2">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center">
-                                <Users className="h-3 w-3 text-muted-foreground mr-1" />
-                                <span className="text-xs text-muted-foreground">{idea.upvotes} collaborators</span>
+                                <Clock className="h-3 w-3 text-muted-foreground mr-1" />
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(idea.assignments[0]?.assigned_at || idea.created_at).toLocaleDateString()}
+                                </span>
                               </div>
-                              <div className="flex items-center">
-                                <Avatar className="h-4 w-4">
-                                  <AvatarFallback className="text-[8px]">{idea.creator_id.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-xs text-muted-foreground">{idea.creator_id}</span>
-                              </div>
+                              <Link href={`/users/${idea.creator_id}`} onClick={(e) => e.stopPropagation()}>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Avatar className="h-4 w-4 cursor-pointer">
+                                        <AvatarFallback className="text-[8px]">
+                                          {idea.users?.display_name?.charAt(0) || idea.creator_id.charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{idea.users?.display_name || 'User'}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </Link>
                             </div>
                             <Badge 
                               className={`text-[10px] capitalize px-1.5 py-0 h-4 ${
@@ -1026,49 +1056,59 @@ const DashboardPage = () => {
                     <CardTitle>
                       {myIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
                        collaboratedIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
-                       'Checklists'}
+                       myPicksIdeas.find(idea => idea.id === selectedIdeaId)?.title || 
+                       'Idea Details'}
                     </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 gap-1"
-                      onClick={() => {
-                        setNewChecklistTitle("");
-                        setNewChecklistType("personal");
-                        setChecklistIdeaId(selectedIdeaId);
-                        setIsChecklistDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span className="text-xs">Add Checklist</span>
-                    </Button>
                   </div>
-                  <CardDescription>
-                    Implementation checklists for this idea
-                  </CardDescription>
                 </CardHeader>
                 
                 <CardContent className="flex-1 overflow-auto p-4">
-                  {isLoadingChecklists ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="animate-spin h-8 w-8 border-2 border-current border-t-transparent rounded-full"></div>
-                    </div>
-                  ) : ideaChecklists.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3">
-                      <div className="rounded-full bg-background p-3 border">
-                        <CheckSquare className="h-8 w-8 text-muted-foreground" />
+                  <Tabs defaultValue="checklists" className="w-full">
+                    <TabsList className="mb-2">
+                      <TabsTrigger value="checklists">Checklists</TabsTrigger>
+                      <TabsTrigger value="assignees">Assignees</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="checklists" className="mt-2">
+                      <div className="flex justify-between items-center mb-4">
+                        <CardDescription>
+                          Implementation checklists for this idea
+                        </CardDescription>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 gap-1"
+                          onClick={() => {
+                            setNewChecklistTitle("");
+                            setNewChecklistType("personal");
+                            setChecklistIdeaId(selectedIdeaId);
+                            setIsChecklistDialogOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span className="text-xs">Add Checklist</span>
+                        </Button>
                       </div>
-                      <h3 className="text-lg font-medium">No Checklists Found</h3>
-                      <p className="text-muted-foreground max-w-md">
-                        Start tracking implementation tasks by creating your first checklist.
-                      </p>
-                      <Button 
-                        onClick={() => {
-                          setNewChecklistTitle("");
-                          setNewChecklistType("personal");
-                          setChecklistIdeaId(selectedIdeaId);
-                          setIsChecklistDialogOpen(true);
-                        }}
+                      {isLoadingChecklists ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="animate-spin h-8 w-8 border-2 border-current border-t-transparent rounded-full"></div>
+                        </div>
+                      ) : ideaChecklists.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3">
+                          <div className="rounded-full bg-background p-3 border">
+                            <CheckSquare className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-lg font-medium">No Checklists Found</h3>
+                          <p className="text-muted-foreground max-w-md">
+                            Start tracking implementation tasks by creating your first checklist.
+                          </p>
+                          <Button 
+                            onClick={() => {
+                              setNewChecklistTitle("");
+                              setNewChecklistType("personal");
+                              setChecklistIdeaId(selectedIdeaId);
+                              setIsChecklistDialogOpen(true);
+                            }}
                         className="mt-2"
                       >
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -1076,19 +1116,16 @@ const DashboardPage = () => {
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       {ideaChecklists.map((checklist) => (
-                        <div key={checklist.id} className="border rounded-md mb-4 overflow-hidden">
-                          <div className="border-b bg-muted/50 p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-sm">
-                                {checklist.title}
-                                {checklist.is_shared && (
-                                  <Badge className="ml-2" variant="outline">Shared</Badge>
-                                )}
-                              </h3>
-                              <Badge variant="outline" className="ml-auto">
-                                {checklist.progress}% Complete
+                        <div 
+                          key={checklist.id} 
+                          className="border rounded-lg overflow-hidden bg-card">
+                          <div className="flex items-center justify-between p-4 bg-muted/30">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium text-sm">{checklist.title}</h3>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+                                {Math.round(checklist.progress)}% Complete
                               </Badge>
                             </div>
                             <Button
@@ -1179,7 +1216,92 @@ const DashboardPage = () => {
                         </div>
                       ))}
                     </div>
-                  )}
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="assignees" className="space-y-4 mt-2">
+                      <div className="flex justify-between items-center">
+                        <CardDescription>People working on this idea</CardDescription>
+                      </div>
+                      
+                      {/* Idea Creator */}
+                      <div className="border rounded-lg p-4">
+                        <h3 className="text-sm font-medium mb-2">Creator</h3>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const selectedIdea = 
+                              myIdeas.find(idea => idea.id === selectedIdeaId) || 
+                              collaboratedIdeas.find(idea => idea.id === selectedIdeaId) || 
+                              myPicksIdeas.find(idea => idea.id === selectedIdeaId);
+                              
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback>
+                                    {selectedIdea?.users?.display_name?.charAt(0) || selectedIdea?.creator_id?.charAt(0) || '?'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium">{selectedIdea?.users?.display_name || 'User'}</p>
+                                  <p className="text-xs text-muted-foreground">Creator</p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      
+                      {/* Assignees */}
+                      <div className="border rounded-lg p-4">
+                        <h3 className="text-sm font-medium mb-2">Assignees</h3>
+                        {(() => {
+                          const selectedIdea = 
+                            myIdeas.find(idea => idea.id === selectedIdeaId) || 
+                            collaboratedIdeas.find(idea => idea.id === selectedIdeaId) || 
+                            myPicksIdeas.find(idea => idea.id === selectedIdeaId);
+                            
+                          if (!selectedIdea?.assignments || selectedIdea.assignments.length === 0) {
+                            return (
+                              <div className="text-sm text-muted-foreground py-2">
+                                No one is currently assigned to this idea.
+                              </div>
+                            );
+                          }
+                          
+                          return selectedIdea.assignments.map(assignment => (
+                            <div key={assignment.id} className="flex items-center justify-between py-2 border-t first:border-t-0">
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarFallback className="text-xs">{assignment.user_id.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm">{assignment.user_id}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(assignment.assigned_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge className={`text-[10px] capitalize px-1.5 py-0 h-4 
+                                ${assignment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                  assignment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
+                                  'bg-green-100 text-green-800'}
+                              `}>
+                                {assignment.status.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                      
+                      {/* Collaborators */}
+                      <div className="border rounded-lg p-4">
+                        <h3 className="text-sm font-medium mb-2">Collaborators</h3>
+                        <div className="text-sm text-muted-foreground">
+                          Coming soon: Track people collaborating on your ideas.
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             )}
@@ -1415,19 +1537,30 @@ const DashboardPage = () => {
                 id="checklist-idea"
                 value={checklistIdeaId || ""}
                 onChange={(e) => setChecklistIdeaId(e.target.value)}
-                className="col-span-3 p-2 rounded-md border"
+                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Select an idea</option>
-                {myIdeas.map((idea) => (
-                  <option key={idea.id} value={idea.id}>
-                    {idea.title}
-                  </option>
-                ))}
-                {collaboratedIdeas.map((idea) => (
-                  <option key={idea.id} value={idea.id}>
-                    {idea.title} (Collaborated)
-                  </option>
-                ))}
+                <optgroup label="My Ideas">
+                  {myIdeas.map((idea) => (
+                    <option key={idea.id} value={idea.id}>
+                      {idea.title}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="My Picks">
+                  {myPicksIdeas.map((idea) => (
+                    <option key={idea.id} value={idea.id}>
+                      {idea.title} (Assigned)
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Collaborated">
+                  {collaboratedIdeas.map((idea) => (
+                    <option key={idea.id} value={idea.id}>
+                      {idea.title} (Collaborated)
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -1442,33 +1575,7 @@ const DashboardPage = () => {
                 placeholder="Enter checklist title"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="checklist-type" className="text-right">
-                Type
-              </Label>
-              <div className="col-span-3 flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="personal-type"
-                    name="checklist-type"
-                    checked={newChecklistType === "personal"}
-                    onChange={() => setNewChecklistType("personal")}
-                  />
-                  <label htmlFor="personal-type">Personal</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="shared-type"
-                    name="checklist-type"
-                    checked={newChecklistType === "shared"}
-                    onChange={() => setNewChecklistType("shared")}
-                  />
-                  <label htmlFor="shared-type">Shared</label>
-                </div>
-              </div>
-            </div>
+            {/* Type selection removed */}
           </div>
           <DialogFooter>
             <Button 

@@ -31,10 +31,13 @@ The platform is built with a clean, intuitive UI using Next.js, Tailwind CSS, an
 - **Notifications**: Stay updated on collaboration requests, task updates, and comments
 - **Active Collaborators**: See who's online and their roles
 
-### 3. Ideas
-- **List view** of all ideas you have access to
+### 3. Ideas & Posts
+- **Reddit-style UI**: Browse posts in a clean, modern interface similar to Reddit
+- **Upvote/Downvote**: Vote on posts to promote quality content
+- **List view**: Browse all posts and ideas in a familiar card-based layout
+- **Post Details**: View full post content with preserved formatting, including line breaks
+- **Comment Thread**: Reddit-style comment system with voting, replying, and sorting options
 - **Toggle privacy**: Switch ideas between public and private
-- **Threaded discussions**: Comment and reply in Reddit-style threads
 - **Status filtering**: Filter ideas by draft, in-progress, completed, or archived
 
 ### 4. Implementation Checklists
@@ -52,6 +55,30 @@ The platform is built with a clean, intuitive UI using Next.js, Tailwind CSS, an
 ### 6. Authentication & Security
 - **Sign up or log in** with Clerk
 - **Row-Level Security** ensures your data is only visible to authorized users
+
+---
+
+## Post Features and UI
+
+### Reddit-Style Post Interface
+- **Clean, minimal UI**: Posts display in a clean, text-focused layout similar to Reddit
+- **Back navigation**: Circular back button for easy navigation between screens
+- **Voting system**: Pill-style vote buttons with upvote/downvote capabilities
+- **Text formatting**: Proper rendering of post content with preserved line breaks and spacing
+- **Full-width layout**: Content uses full screen width for better readability on all devices
+
+### Comment System
+- **Reddit-style comments**: Clean layout with username, timestamp, and voting controls
+- **Comment sorting**: Sort comments by Best, New, Top, or Controversial
+- **Threaded replies**: Hierarchical comment system for organized discussions
+- **Comment actions**: Reply, Award, Share, Save, Report options for each comment
+- **Collapsible threads**: Expand or collapse comment threads for better navigation
+
+### Modern Notification System
+- **Toast notifications**: Non-intrusive toast messages replace traditional alerts
+- **Action feedback**: Visual confirmation for actions like upvoting, commenting, and sharing
+- **Timed dismissal**: Notifications automatically dismiss after a short period
+- **Multiple notification types**: Success, error, and information notifications with appropriate styling
 
 ---
 

@@ -302,17 +302,15 @@ export default function PostPage() {
   if (error || !post) {
     return (
       <MainLayout>
-        <div className="px-4 py-6 md:px-6 lg:px-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-red-500">{error || "Post not found"}</p>
-              <div className="mt-4 text-center">
-                <Link href="/posts">
-                  <Button>Back to Posts</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="px-4 py-6 w-full bg-background">
+          <div className="max-w-screen-xl mx-auto bg-white dark:bg-black rounded-md shadow-sm p-6">
+            <p className="text-center text-red-500 text-lg">{error || "Post not found"}</p>
+            <div className="mt-4 text-center">
+              <Link href="/posts">
+                <Button>Back to Posts</Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </MainLayout>
     );

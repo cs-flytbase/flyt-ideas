@@ -195,40 +195,119 @@ const ToolsPage = () => {
     }
   };
 
+  // Function to handle creating a new tool
+  const handleCreateTool = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to add a tool.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!newTool.name || !newTool.description) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in the required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsCreatingTool(true);
+      
+      const response = await fetch('/api/tools', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newTool.name,
+          description: newTool.description,
+          icon_name: newTool.icon_name,
+          categories: newTool.categories,
+          addAsPowerUser: newTool.isPowerUser
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create tool');
+      }
+      
+      const data = await response.json();
+      
+      // Add the newly created tool to the list
+      const toolWithIcon = {
+        ...data,
+        icon: toolIcons[data.icon_name as keyof typeof toolIcons],
+      };
+      
+      setTools([toolWithIcon, ...tools]);
+      
+      // Reset form and close modal
+      setNewTool({
+        name: "",
+        description: "",
+        icon_name: "cube",
+        categories: [],
+        isPowerUser: true
+      });
+      
+      setIsModalOpen(false);
+      
+      toast({
+        title: "Tool Added",
+        description: "Your tool has been added to the directory.",
+      });
+    } catch (error) {
+      console.error('Error creating tool:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create tool. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingTool(false);
+    }
+  };
+
   return (
     <MainLayout>
-      <div className="space-y-6 px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+      <div className="space-y-4 sm:space-y-6 px-2 py-3 sm:px-4 sm:py-6 md:px-6 lg:px-8 max-w-7xl mx-auto w-full overflow-visible">
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Tools Directory</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tools Directory</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Discover and share tools that enhance productivity
             </p>
           </div>
           <div className="flex items-center">
             <button 
-              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
+              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-2 sm:px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 transition-colors"
               onClick={() => setIsModalOpen(true)}
             >
-              <Plus className="mr-1 h-4 w-4" />
-              Add Tool
+              <Plus className="mr-1.5 h-4 w-4" />
+              <span>Add Tool</span>
             </button>
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card p-3 sm:p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:space-x-2">
+        <div className="rounded-lg bg-card w-full p-2 flex items-center gap-2 shadow-sm border">
+          {/* Icon */}
+          <span className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-primary hidden sm:block"
+              className="text-muted-foreground"
             >
               <path d="M8.5 8.5 3 15l8.5 9 8.5-9-5.5-6.5L8.5 2 3 6l5.5 2.5Z" />
               <path d="M11 13 8.5 8.5 6 13l2.5 3 2.5-3Z" />
@@ -238,50 +317,51 @@ const ToolsPage = () => {
               <path d="M20 6v9" />
               <path d="M14.5 5 11 3" />
             </svg>
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Describe your problem..."
-                className="w-full rounded-md border-0 bg-transparent px-3 py-2 text-sm sm:text-base shadow-none focus:outline-none focus:ring-0"
-                value={queryText}
-                onChange={(e) => setQueryText(e.target.value)}
-              />
-            </div>
-            <button 
-              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-3 sm:px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
-              onClick={handleGetSuggestions}
-              disabled={suggesting || !queryText.trim()}
-            >
-              {suggesting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span className="hidden sm:inline">Suggesting...</span>
-                  <span className="sm:hidden">Loading...</span>
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">Get Suggestions</span>
-                  <span className="sm:hidden">Suggest</span>
-                </>
-              )}
-            </button>
-          </div>
+          </span>
+          {/* Input */}
+          <input
+            type="text"
+            placeholder="Describe your problem..."
+            className="flex-1 bg-transparent outline-none border-none text-sm sm:text-base px-2 py-2 text-muted-foreground"
+            value={queryText}
+            onChange={(e) => setQueryText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && queryText.trim()) {
+                handleGetSuggestions();
+              }
+            }}
+          />
+          {/* Button */}
+          <button
+            className="rounded-md bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors"
+            onClick={handleGetSuggestions}
+            disabled={suggesting || !queryText.trim()}
+          >
+            {suggesting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
+            ) : null}
+            Get Suggestions
+          </button>
         </div>
 
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
-          {categories.map((category, i) => (
-            <button
-              key={i}
-              className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-                category === activeCategory
-                  ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
-                  : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              }`}
-              onClick={() => setActiveCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="py-2 px-1 sm:mx-0 sm:px-0">
+          <h2 className="text-sm font-medium text-muted-foreground mb-2 ml-0.5">Categories</h2>
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5 overflow-x-auto pb-1.5 no-scrollbar">
+            {categories.map((category, i) => (
+              <button
+                key={i}
+                className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+                  category === activeCategory
+                    ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
+                    : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                }`}
+                onClick={() => setActiveCategory(category)}
+                aria-pressed={category === activeCategory}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -292,48 +372,68 @@ const ToolsPage = () => {
           <>
             {/* Main tools grid */}
             {!suggestedTools && (
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {tools.map((tool) => (
-                  <ToolCard
-                    key={tool.id}
-                    id={tool.id}
-                    name={tool.name}
-                    description={tool.description}
-                    tags={tool.categories}
-                    usageCount={tool.usage_count}
-                    powerUsers={tool.power_users?.map(user => user.display_name) || []}
-                    icon={tool.icon}
-                  />
-                ))}
+              <>
+                <h2 className="text-lg font-medium mt-2 mb-3">
+                  {activeCategory === 'All' ? 'All Tools' : `${activeCategory} Tools`}
+                  <span className="text-muted-foreground text-sm font-normal ml-2">{tools.length} results</span>
+                </h2>
                 
-                {tools.length === 0 && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-8 sm:py-12 text-center">
-                    <p className="text-muted-foreground">No tools found in this category</p>
-                  </div>
-                )}
-              </div>
+                <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {tools.map((tool) => (
+                    <ToolCard
+                      key={tool.id}
+                      id={tool.id}
+                      name={tool.name}
+                      description={tool.description}
+                      tags={tool.categories}
+                      usageCount={tool.usage_count}
+                      powerUsers={tool.power_users?.map(user => user.display_name) || []}
+                      icon={tool.icon}
+                    />
+                  ))}
+                  
+                  {tools.length === 0 && (
+                    <div className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 py-8 sm:py-12 text-center bg-muted/20 rounded-lg border">
+                      <div className="flex flex-col items-center justify-center space-y-3 px-4">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-muted-foreground">No tools found in the {activeCategory} category</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setActiveCategory("All")}
+                        >
+                          View All Tools
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             
             {/* Suggested tools result */}
             {suggestedTools && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h2 className="text-lg font-semibold">Suggested Tools</h2>
                   <Button 
                     variant="outline" 
                     size="sm" 
+                    className="w-full sm:w-auto flex items-center justify-center gap-1"
                     onClick={() => setSuggestedTools(null)}
                   >
-                    Back to All Tools
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Back to All Tools</span>
                   </Button>
                 </div>
                 
                 {suggestedTools.message && (
-                  <p className="text-sm text-muted-foreground">{suggestedTools.message}</p>
+                  <p className="text-sm text-muted-foreground p-2 bg-muted/50 rounded-md">{suggestedTools.message}</p>
                 )}
                 
                 {suggestedTools.tools.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {suggestedTools.tools.map((tool) => (
                       <ToolCard
                         key={tool.id}
@@ -348,17 +448,20 @@ const ToolsPage = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-lg border p-8 text-center">
-                    <p className="text-muted-foreground">No matching tools found</p>
+                  <div className="rounded-lg border p-4 sm:p-8 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-muted-foreground">No matching tools found</p>
+                    </div>
                   </div>
                 )}
                 
-                <div className="rounded-lg border p-4 bg-muted/20">
-                  <h3 className="font-medium mb-2">Based on your search</h3>
-                  <div className="grid gap-2 md:grid-cols-3">
-                    <div className="rounded-md bg-background p-2 shadow-sm">
+                <div className="rounded-lg border p-3 sm:p-4 bg-muted/20">
+                  <h3 className="font-medium text-sm sm:text-base mb-2">Based on your search</h3>
+                  <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                    <div className="rounded-md bg-background p-2 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center space-x-2">
-                        <div className="h-8 w-8 rounded-md bg-primary/10 p-1">
+                        <div className="h-8 w-8 rounded-md bg-primary/10 p-1 flex-shrink-0">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -374,15 +477,15 @@ const ToolsPage = () => {
                             <path d="M15 3a3 3 0 0 1 3 3m-3-3a3 3 0 0 0-3 3m3-3v1M9 3a3 3 0 0 0-3 3m3-3a3 3 0 0 1 3 3m-3-3v1M3 9a3 3 0 0 1 3-3M3 9a3 3 0 0 0 3 3M3 9H2m19 0a3 3 0 0 0-3-3m3 3a3 3 0 0 1-3 3m3-3h1M9 21a3 3 0 0 1-3-3m3 3a3 3 0 0 0 3-3m-3 3v-1m6 1a3 3 0 0 0 3-3m-3 3a3 3 0 0 1-3-3m3 3v-1m-9-9a3 3 0 0 0-3 3m3-3a3 3 0 0 1 3 3m-3-3v1m12-1a3 3 0 0 1 3 3m-3-3a3 3 0 0 0-3 3m3-3v1" />
                           </svg>
                         </div>
-                        <div>
-                          <div className="font-medium">Figma</div>
-                          <div className="text-xs text-muted-foreground">Design & Prototyping</div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">Figma</div>
+                          <div className="text-xs text-muted-foreground truncate">Design & Prototyping</div>
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-md bg-background p-2 shadow-sm">
+                    <div className="rounded-md bg-background p-2 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center space-x-2">
-                        <div className="h-8 w-8 rounded-md bg-primary/10 p-1">
+                        <div className="h-8 w-8 rounded-md bg-primary/10 p-1 flex-shrink-0">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -460,43 +563,43 @@ const ToolsPage = () => {
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="name" className="sm:text-right">
                 Name*
               </Label>
               <Input
                 id="name"
                 value={newTool.name}
                 onChange={(e) => setNewTool({...newTool, name: e.target.value})}
-                className="col-span-3"
+                className="col-span-1 sm:col-span-3"
                 placeholder="Tool name"
                 required
               />
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="description" className="sm:text-right">
                 Description*
               </Label>
               <Textarea
                 id="description"
                 value={newTool.description}
                 onChange={(e) => setNewTool({...newTool, description: e.target.value})}
-                className="col-span-3"
+                className="col-span-1 sm:col-span-3"
                 placeholder="What does this tool do?"
                 required
               />
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="icon" className="text-right">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
+              <Label htmlFor="icon" className="sm:text-right">
                 Icon
               </Label>
               <Select 
                 value={newTool.icon_name} 
                 onValueChange={(value) => setNewTool({...newTool, icon_name: value})}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-1 sm:col-span-3">
                   <SelectValue placeholder="Select an icon" />
                 </SelectTrigger>
                 <SelectContent>
@@ -515,11 +618,11 @@ const ToolsPage = () => {
             </div>
             
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
+              <Label className="sm:text-right pt-2">
                 Categories
               </Label>
-              <div className="col-span-3 space-y-3">
-                <div className="flex flex-wrap gap-2">
+              <div className="col-span-1 sm:col-span-3 space-y-3">
+                <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto p-1">
                   {availableCategories.map((category) => (
                     <div key={category} className="flex items-center space-x-2">
                       <Checkbox 
@@ -578,7 +681,7 @@ const ToolsPage = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-2 sm:gap-4">
               <div className="text-right">
                 <Label htmlFor="power-user" className="mr-2">
                   Power User
@@ -603,11 +706,8 @@ const ToolsPage = () => {
             </div>
           </div>
           
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsModalOpen(false)}
-            >
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2 gap-2 sm:gap-0 mt-4">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
             <Button 
@@ -621,92 +721,14 @@ const ToolsPage = () => {
                   Creating...
                 </>
               ) : (
-                "Create Tool"
+                'Create Tool'
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>
   );
-  
-  // Function to handle creating a new tool
-  async function handleCreateTool() {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to add a tool.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!newTool.name || !newTool.description) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in the required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      setIsCreatingTool(true);
-      
-      const response = await fetch('/api/tools', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newTool.name,
-          description: newTool.description,
-          icon_name: newTool.icon_name,
-          categories: newTool.categories,
-          addAsPowerUser: newTool.isPowerUser
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create tool');
-      }
-      
-      const data = await response.json();
-      
-      // Add the newly created tool to the list
-      const toolWithIcon = {
-        ...data,
-        icon: toolIcons[data.icon_name as keyof typeof toolIcons],
-      };
-      
-      setTools([toolWithIcon, ...tools]);
-      
-      // Reset form and close modal
-      setNewTool({
-        name: "",
-        description: "",
-        icon_name: "cube",
-        categories: [],
-        isPowerUser: true
-      });
-      
-      setIsModalOpen(false);
-      
-      toast({
-        title: "Tool Added",
-        description: "Your tool has been added to the directory.",
-      });
-    } catch (error) {
-      console.error('Error creating tool:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create tool. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingTool(false);
-    }
-  }
 };
 
 export default ToolsPage;

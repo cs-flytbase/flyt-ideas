@@ -21,26 +21,26 @@ export function ToolCard({
   icon,
 }: ToolCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md">
-      <div className="mb-3 flex items-center">
-        <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+    <div className="rounded-lg border bg-card p-3 sm:p-4 shadow-sm transition-all hover:shadow-md">
+      <div className="mb-2 sm:mb-3 flex items-center">
+        <div className="mr-2 sm:mr-3 flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
           {icon}
         </div>
         <Link href={`/tools/${id}`} className="flex-1">
-          <h3 className="text-lg font-semibold hover:text-primary">{name}</h3>
+          <h3 className="text-base sm:text-lg font-semibold hover:text-primary">{name}</h3>
         </Link>
       </div>
-      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+      <p className="mt-1 line-clamp-2 text-xs sm:text-sm text-muted-foreground">
         {description}
       </p>
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-1.5 sm:mt-2 flex flex-wrap gap-1">
         {tags.map((tag, i) => (
           <Badge key={i} variant="secondary" className="text-xs">
             {tag}
           </Badge>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-between text-xs">
+      <div className="mt-2 sm:mt-3 flex items-center justify-between text-xs">
         <div className="flex items-center text-muted-foreground">
           <svg
             xmlns="http://www.w3.org/2000/svg"

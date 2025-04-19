@@ -9,11 +9,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Toaster } from "@/components/ui/toaster";
 
 // Import components
-import { CommentSection, HistoryTab } from './components';
+import { HistoryTab } from './components';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MainLayout } from "@/components/main-layout";
+import { 
+  CommentItem, 
+  ContentDisplay, 
+  DiscussionHeader, 
+  VotingActions 
+} from "@/components/discussion";
 
 // Define types based on our API responses
 interface Comment {
@@ -54,7 +63,8 @@ const getInitials = (name: string): string => {
 };
 
 export default function IdeaPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const router = useRouter();
   const { user, isLoaded: isUserLoaded } = useUser();
   const [loading, setLoading] = useState(true);
@@ -70,7 +80,9 @@ export default function IdeaPage() {
   const [commentCount, setCommentCount] = useState(0);
   const [relatedIdeas, setRelatedIdeas] = useState<any[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("comments");
+  const [activeTab, setActiveTab] = useState("discussion");
+  const [showCommentBox, setShowCommentBox] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchIdea() {
@@ -247,192 +259,120 @@ export default function IdeaPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-4 py-6 md:px-6 lg:px-8">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
+      <MainLayout>
+        <div className="px-4 py-6 md:px-6 lg:px-8 flex items-center justify-center min-h-[50vh]">
+          <p className="text-center">Loading idea...</p>
+        </div>
+      </MainLayout>
     );
   }
 
-  if (!idea) {
+  if (error || !idea) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-6 md:px-6 lg:px-8">
-        <div className="text-center space-y-3">
-          <h2 className="text-2xl font-bold">Idea Not Found</h2>
-          <p className="text-muted-foreground">The requested idea could not be found.</p>
-          <Button variant="outline" onClick={() => router.push('/ideas')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Ideas
-          </Button>
+      <MainLayout>
+        <div className="px-4 py-6 w-full bg-background">
+          <div className="max-w-screen-xl mx-auto bg-white dark:bg-black rounded-md shadow-sm p-6">
+            <p className="text-center text-red-500 text-lg">{error || "Idea not found"}</p>
+            <div className="mt-4 text-center">
+              <Link href="/ideas">
+                <Button>Back to Ideas</Button>
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
     <MainLayout>
-      <div className="px-4 py-6 md:px-6 lg:px-8">
-        {/* Clean, modern header */}
-        <div className="bg-background border-b">
-          <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
-            <div className="flex items-center mb-4 sm:mb-6">
-              <Button variant="ghost" onClick={() => router.push('/ideas')} className="hover:bg-background/80 rounded-full px-2 sm:px-3">
-                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
-                <span className="text-sm sm:text-base">Back to ideas</span>
-              </Button>
-            </div>
+      <div className="px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 w-full bg-background max-w-7xl mx-auto">
+        {/* Idea header with author info, title and tags */}
+        <DiscussionHeader
+          title={idea.title}
+          creator={idea.users}
+          created_at={idea.created_at}
+          tags={idea.tags || []}
+          backLink="/ideas"
+          backLinkText="Back to ideas"
+        />
+
+        {/* Idea content */}
+        <div className="bg-white dark:bg-black rounded-lg border shadow-sm overflow-hidden">
+          <div className="p-3 sm:p-4 md:p-5">
+            {/* Idea content with improved typography and spacing */}
+            <ContentDisplay content={idea.description} />
             
-            <div className="flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
-                <div className="flex-1 space-y-3 sm:space-y-4">
-                  <div className="flex flex-wrap items-start gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                      {idea.title}
-                    </h1>
-                    <Badge variant="outline" className="capitalize">
-                      {idea.status || "Open"}
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-                    <span>Created by</span>
-                    <Link href={`/users/${idea.creator_id}`} className="font-medium hover:underline">
-                      {idea.users?.display_name || "unknown"}
-                    </Link>
-                    <span>•</span>
-                    <span>{formatDistanceToNow(new Date(idea.created_at), { addSuffix: true })}</span>
-                    <span>•</span>
-                    <span>{idea.upvotes || 0} upvotes</span>
-                  </div>
-                  
-                  {/* Voting and picking buttons - moved to top on mobile */}
-                  <div className="flex items-center gap-3 order-first sm:order-none mb-3 sm:mb-0 sm:mt-2">
-                    <div className="flex items-center border rounded-full px-1 space-x-1 bg-muted/10">
-                      <button 
-                        className={`text-foreground/70 hover:text-primary transition-colors flex items-center gap-1 py-1 px-2 ${userVote === 1 ? "text-primary" : ""}`}
-                        onClick={() => handleVote(1)}
-                        disabled={isVoting}
-                      >
-                        {isVoting && userVote === 1 ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <>
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill={userVote === 1 ? "currentColor" : "none"}
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="m5 15 7-7 7 7" />
-                            </svg>
-                          </>
-                        )}
-                      </button>
-                      
-                      <span className={`text-sm font-semibold ${
-                        idea.upvotes > 0 ? "text-primary" : (
-                          idea.upvotes < 0 ? "text-destructive" : ""
-                        )
-                      }`}>
-                        {idea.upvotes || 0}
-                      </span>
-                      
-                      <button 
-                        className={`text-foreground/70 hover:text-destructive transition-colors flex items-center gap-1 py-1 px-2 ${userVote === -1 ? "text-destructive" : ""}`}
-                        onClick={() => handleVote(-1)}
-                        disabled={isVoting}
-                      >
-                        {isVoting && userVote === -1 ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill={userVote === -1 ? "currentColor" : "none"}
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m19 9-7 7-7-7" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                    
-                    {isUserLoaded && user && (
-                      <div>
-                        {isUserAssigned ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleUnpickIdea}
-                            disabled={isUnassigning}
-                            className="h-8 px-3 text-xs sm:text-sm"
-                          >
-                            {isUnassigning ? (
-                              <>
-                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                                <span className="sm:hidden">Unpick</span>
-                                <span className="hidden sm:inline">Unassigning...</span>
-                              </>
-                            ) : (
-                              <>Unpick</>
-                            )}
-                          </Button>
-                        ) : (
-                          <Button 
-                            variant="default"
-                            size="sm"
-                            onClick={handlePickIdea}
-                            disabled={isAssigning}
-                            className="h-8 px-3 text-xs sm:text-sm"
-                          >
-                            {isAssigning ? (
-                              <>
-                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                                <span className="sm:hidden">Pick</span>
-                                <span className="hidden sm:inline">Assigning...</span>
-                              </>
-                            ) : (
-                              <>Pick</>
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="prose max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed text-sm sm:text-base">
-                      {idea.description}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 my-2 sm:my-4">
-                    {idea.tags && idea.tags.map((tag: string) => (
-                      <Badge key={tag} variant="secondary" className="rounded-md px-2 py-0.5 sm:px-3 sm:py-1 text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+            <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t">
+              {/* Voting controls */}
+              <div className="flex items-center gap-2">
+                <VotingActions
+                  id={idea.id}
+                  upvotes={idea.upvotes || 0}
+                  commentCount={commentCount}
+                  user={user}
+                  userVote={userVote || 0}
+                  type="idea"
+                  onCommentClick={() => setShowCommentBox(true)}
+                />
+                
+                <Badge variant="outline" className="capitalize ml-2">
+                  {idea.status || "Open"}
+                </Badge>
               </div>
+
+              {/* Idea assignment button */}
+              {isUserLoaded && user && (
+                <div>
+                  {isUserAssigned ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleUnpickIdea}
+                      disabled={isUnassigning}
+                      className="h-8 px-3 text-xs sm:text-sm"
+                    >
+                      {isUnassigning ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          <span className="sm:hidden">Unpick</span>
+                          <span className="hidden sm:inline">Unassigning...</span>
+                        </>
+                      ) : (
+                        <>Unpick</>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      onClick={handlePickIdea}
+                      disabled={isAssigning}
+                      className="h-8 px-3 text-xs sm:text-sm"
+                    >
+                      {isAssigning ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          <span className="sm:hidden">Pick</span>
+                          <span className="hidden sm:inline">Assigning...</span>
+                        </>
+                      ) : (
+                        <>Pick</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
-            
-            {/* Voting controls are now combined in the section above */}
           </div>
         </div>
 
-        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+
+
+        {/* Tabs for Discussion, Team and History */}
+        <div className="mt-5">
           <Tabs defaultValue="discussion" className="w-full">
-            <TabsList className="border-b w-full mb-4 sm:mb-8 overflow-x-auto flex flex-nowrap -mx-3 px-3 sm:mx-0 sm:px-0">
+            <TabsList className="border-b w-full mb-4 overflow-x-auto flex flex-nowrap">
               <TabsTrigger 
                 value="discussion" 
                 className="px-3 sm:px-4 py-1.5 sm:py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm whitespace-nowrap"
@@ -443,7 +383,7 @@ export default function IdeaPage() {
                   <span className="text-xs text-muted-foreground">{commentCount}</span>
                 </div>
               </TabsTrigger>
-              
+
               <TabsTrigger 
                 value="team" 
                 className="px-3 sm:px-4 py-1.5 sm:py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm whitespace-nowrap"
@@ -468,25 +408,83 @@ export default function IdeaPage() {
             
             {/* Discussion Tab Content */}
             <TabsContent value="discussion" className="mt-4">
-              <div className="bg-card rounded-lg border shadow-sm">
-                <CommentSection 
-                  comments={comments}
-                  newComment={newComment}
-                  setNewComment={setNewComment}
-                  handleSubmitComment={handleSubmitComment}
-                  isSubmitting={isSubmitting}
-                  isUserLoaded={isUserLoaded}
-                  user={user}
-                  getInitials={getInitials}
-                />
+              <div className="bg-white dark:bg-black rounded-lg border shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold flex items-center">
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    Comments
+                  </h3>
+                  
+                  {!showCommentBox && isUserLoaded && user && (
+                    <Button 
+                      onClick={() => setShowCommentBox(true)}
+                      className="text-sm"
+                    >
+                      Add Comment
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Comment input area */}
+                {showCommentBox && (
+                  <div className="mb-6 border rounded-md p-3">
+                    <Textarea
+                      id="comment-textarea"
+                      placeholder="What are your thoughts?"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      rows={5}
+                      disabled={!isUserLoaded || !user}
+                      className="border-0 focus-visible:ring-0 resize-none text-sm p-3"
+                      autoFocus
+                    />
+                    <div className="flex justify-between mt-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setShowCommentBox(false)}
+                        className="text-xs h-7"
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleSubmitComment} 
+                        disabled={isSubmitting || !newComment.trim() || !isUserLoaded || !user}
+                        className="bg-primary hover:bg-primary/90 text-xs h-7 rounded-full px-4"
+                      >
+                        {isSubmitting ? "Posting..." : "Comment"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Comments list */}
+                {comments.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-muted-foreground text-sm">No comments yet</p>
+                    <p className="text-xs text-muted-foreground/70">Be the first to share what you think!</p>
+                  </div>
+                ) : (
+                  <div>
+                    {comments.map((comment) => (
+                      <CommentItem
+                        key={comment.id}
+                        comment={{
+                          ...comment,
+                          author: comment.user
+                        }}
+                        currentUser={user}
+                        type="idea"
+                        parentId={id}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
-
-
             
             {/* Team Tab Content */}
             <TabsContent value="team" className="mt-4">
-              <div className="bg-card rounded-lg border shadow-sm p-6">
+              <div className="bg-white dark:bg-black rounded-lg border shadow-sm p-6">
                 <h3 className="text-xl font-semibold mb-4 flex items-center">
                   <Users className="mr-2 h-5 w-5" />
                   Contributors
@@ -503,37 +501,37 @@ export default function IdeaPage() {
                           </Avatar>
                         </div>
                         <div className="flex-1">
-                          <Link href={`/users/${assignment.user.id}`} className="font-medium hover:underline">
-                            {assignment.user.display_name}
-                          </Link>
-                          <p className="text-sm text-muted-foreground">
-                            Assigned {formatDistanceToNow(new Date(assignment.assigned_at), { addSuffix: true })}
-                          </p>
+                          <div className="font-medium">{assignment.user.display_name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Joined {formatDistanceToNow(new Date(assignment.assigned_at), { addSuffix: true })}
+                          </div>
                         </div>
-                        <Badge variant="outline" className="capitalize">
-                          {assignment.status}
-                        </Badge>
+                        {/* If current user is this person, show option to leave */}
+                        {user?.id === assignment.user_id && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="ml-auto text-xs hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={handleUnpickIdea}
+                            disabled={isUnassigning}
+                          >
+                            {isUnassigning ? "Leaving..." : "Leave"}
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    <p>No contributors have picked this idea yet.</p>
+                    <p>No contributors yet. Be the first one to pick this idea!</p>
+                    
                     {isUserLoaded && user && !isUserAssigned && (
-                      <Button
-                        variant="outline"
+                      <Button 
+                        onClick={handlePickIdea} 
+                        disabled={isAssigning} 
                         className="mt-4"
-                        onClick={handlePickIdea}
-                        disabled={isAssigning}
                       >
-                        {isAssigning ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Joining team...
-                          </>
-                        ) : (
-                          <>Pick this idea</>
-                        )}
+                        {isAssigning ? "Assigning..." : "Pick this idea"}
                       </Button>
                     )}
                   </div>
@@ -543,16 +541,21 @@ export default function IdeaPage() {
             
             {/* History Tab Content */}
             <TabsContent value="history" className="mt-4">
-              <div className="bg-card rounded-lg border shadow-sm">
-                <HistoryTab 
-                  assignments={assignments}
-                  getInitials={getInitials}
-                />
+              <div className="bg-white dark:bg-black rounded-lg border shadow-sm p-6">
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
+                  <History className="mr-2 h-5 w-5" />
+                  Idea History
+                </h3>
+                
+                <HistoryTab assignments={assignments} getInitials={getInitials} />
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
+      
+      {/* Add the Toaster component to show toasts */}
+      <Toaster />
     </MainLayout>
   );
 }

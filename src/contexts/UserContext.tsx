@@ -112,38 +112,42 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const syncSupabaseUser = async () => {
     if (!clerkUser) {
-      console.error('Cannot sync user: Clerk user is null or undefined');
       return;
     }
     
     if (!supabaseUser) {
-      console.error('Cannot sync user: Supabase user is null or undefined');
+      return;
+    }
+    
+    // Check if user data has actually changed to avoid unnecessary syncs
+    const primaryEmail = clerkUser.emailAddresses?.length > 0 
+      ? clerkUser.emailAddresses[0].emailAddress 
+      : '';
+    
+    const fullName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+    
+    // Compare with current data in Supabase
+    if (
+      supabaseUser.email === primaryEmail &&
+      supabaseUser.avatar_url === clerkUser.imageUrl &&
+      supabaseUser.display_name === (fullName || 'User')
+    ) {
+      // No changes needed
+      return;
+    }
+    
+    // Only log when in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Syncing user with updated data');
+    }
+    
+    // Check if Supabase URL is available
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('Supabase URL or anon key is missing. Cannot sync user.');
       return;
     }
 
     try {
-      // Get email from the first email address in the list
-      const primaryEmail = clerkUser.emailAddresses?.length > 0 
-        ? clerkUser.emailAddresses[0].emailAddress 
-        : '';
-      
-      // Build a display name from firstName and lastName
-      const fullName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
-      
-      // For debugging
-      console.log('Syncing user with data:', {
-        id: clerkUser.id,
-        email: primaryEmail,
-        avatar_url: clerkUser.imageUrl,
-        display_name: fullName || 'User'
-      });
-      
-      // Check if Supabase URL is available
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error('Supabase URL or anon key is missing. Cannot sync user.');
-        return;
-      }
-
       // Use retry logic for network operations
       const result = await retryWithBackoff(async () => {
         return await supabase
@@ -165,7 +169,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error('Error syncing user in Supabase:', JSON.stringify(error));
       } else {
-        console.log('Successfully synced user in Supabase');
+        // Only log in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Successfully synced user in Supabase');
+        }
         setSupabaseUser(data);
       }
     } catch (error) {
@@ -174,37 +181,69 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         console.error('Network error when syncing user with Supabase. Please check your connection and Supabase credentials.');
       } else {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const errorStack = error instanceof Error ? error.stack : '';
-        console.error(`Failed to sync Supabase user: ${errorMessage}`, { error, stack: errorStack });
+        console.error(`Failed to sync Supabase user: ${errorMessage}`);
       }
     }
   };
 
-  useEffect(() => {
-    if (clerkLoaded) {
-      fetchSupabaseUser();
-    }
-  }, [clerkUser, clerkLoaded]);
+  // Debounce function to prevent rapid consecutive calls
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout | null = null;
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
 
+  // Debounced version of syncSupabaseUser to prevent excessive updates
+  const debouncedSyncUser = debounce(syncSupabaseUser, 1000);
+
+  // Track if we've already done the initial sync
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
+
+  // Single useEffect for user initialization and syncing
   useEffect(() => {
-    if (clerkLoaded && clerkUser) {
-      fetchSupabaseUser().then(userExists => {
-        if (!userExists) {
-          createSupabaseUser();
+    let isMounted = true;
+    
+    const initUser = async () => {
+      // Skip if Clerk hasn't loaded yet or there's no user
+      if (!clerkLoaded || !clerkUser) {
+        if (isMounted) {
+          setSupabaseUser(null);
+          setIsLoading(false);
+          setInitialSyncDone(false);
         }
-      });
-    }
+        return;
+      }
+      
+      // Check if user exists in Supabase
+      const userExists = await fetchSupabaseUser();
+      
+      // If mounted and user doesn't exist, create them
+      if (isMounted && !userExists) {
+        await createSupabaseUser();
+        setInitialSyncDone(true);
+      } 
+      // If user exists and we haven't done initial sync, sync now
+      else if (isMounted && userExists && !initialSyncDone) {
+        await syncSupabaseUser();
+        setInitialSyncDone(true);
+      }
+    };
+    
+    initUser();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [clerkLoaded, clerkUser]);
-
-  useEffect(() => {
-    if (clerkLoaded && clerkUser && supabaseUser) {
-      syncSupabaseUser();
-    }
-  }, [clerkLoaded, clerkUser, supabaseUser]);
 
   const refreshUserData = async () => {
     setIsLoading(true);
-    await fetchSupabaseUser();
+    const userExists = await fetchSupabaseUser();
+    if (userExists && clerkUser) {
+      debouncedSyncUser();
+    }
   };
 
   return (

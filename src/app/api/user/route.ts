@@ -103,7 +103,7 @@ export async function PUT(request: Request) {
     const body = await request.json();
     console.log('Update payload:', JSON.stringify(body));
     
-    const { email, displayName, avatarUrl } = body;
+    const { email, displayName, avatarUrl, bio } = body;
 
     // Update the user with full profile information
     const { data, error: updateError } = await supabase
@@ -112,6 +112,7 @@ export async function PUT(request: Request) {
         email: email || '',
         display_name: displayName || 'User',
         avatar_url: avatarUrl || '',
+        bio: bio || '',
         last_active: new Date().toISOString()
       })
       .eq('id', userId)

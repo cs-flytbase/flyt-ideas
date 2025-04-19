@@ -57,7 +57,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       })
     );
 
-    return NextResponse.json(enrichedPosts);
+    return NextResponse.json({ posts: enrichedPosts });
   } catch (error) {
     console.error('GET /posts error:', error);
     return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });

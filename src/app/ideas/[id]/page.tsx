@@ -68,6 +68,9 @@ export default function IdeaPage() {
   const [userVote, setUserVote] = useState<number | null>(null);
   const [isVoting, setIsVoting] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
+  const [relatedIdeas, setRelatedIdeas] = useState<any[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("comments");
 
   useEffect(() => {
     async function fetchIdea() {
@@ -268,39 +271,29 @@ export default function IdeaPage() {
   return (
     <MainLayout>
       <div className="px-4 py-6 md:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <Button variant="ghost" size="icon" asChild className="mr-2">
-              <Link href="/ideas">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <h1 className="text-2xl font-bold">Idea Details</h1>
-          </div>
-        </div>
         {/* Clean, modern header */}
         <div className="bg-background border-b">
-          <div className="container mx-auto px-4 py-6 md:px-6 lg:px-8">
-            <div className="flex items-center mb-6">
-              <Button variant="ghost" onClick={() => router.push('/ideas')} className="hover:bg-background/80 rounded-full">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                <span>Back to ideas</span>
+          <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+            <div className="flex items-center mb-4 sm:mb-6">
+              <Button variant="ghost" onClick={() => router.push('/ideas')} className="hover:bg-background/80 rounded-full px-2 sm:px-3">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                <span className="text-sm sm:text-base">Back to ideas</span>
               </Button>
             </div>
             
             <div className="flex flex-col">
-              <div className="flex items-start gap-6">
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-bold tracking-tight">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:gap-6">
+                <div className="flex-1 space-y-3 sm:space-y-4">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                       {idea.title}
                     </h1>
-                    <Badge variant="outline" className="ml-2 capitalize">
+                    <Badge variant="outline" className="capitalize">
                       {idea.status || "Open"}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                     <span>Created by</span>
                     <Link href={`/users/${idea.creator_id}`} className="font-medium hover:underline">
                       {idea.users?.display_name || "unknown"}
@@ -311,79 +304,32 @@ export default function IdeaPage() {
                     <span>{idea.upvotes || 0} upvotes</span>
                   </div>
                   
-                  <div className="prose max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                      {idea.description}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 my-4">
-                    {idea.tags && idea.tags.map((tag: string) => (
-                      <Badge key={tag} variant="secondary" className="rounded-md px-3 py-1">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                  
-                  <div className="flex items-center gap-4 mt-2">
-                    {isUserLoaded && user ? (
-                      isUserAssigned ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={handleUnpickIdea}
-                          disabled={isUnassigning}
-                        >
-                          {isUnassigning ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Unassigning...
-                            </>
-                          ) : (
-                            <>Unpick</>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="default"
-                          size="sm"
-                          onClick={handlePickIdea}
-                          disabled={isAssigning}
-                        >
-                          {isAssigning ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Assigning...
-                            </>
-                          ) : (
-                            <>Pick</>
-                          )}
-                        </Button>
-                      )
-                    ) : null}
-                    
-                    <div className="flex flex-col items-center space-y-1 mx-2">
+                  {/* Voting and picking buttons - moved to top on mobile */}
+                  <div className="flex items-center gap-3 order-first sm:order-none mb-3 sm:mb-0 sm:mt-2">
+                    <div className="flex items-center border rounded-full px-1 space-x-1 bg-muted/10">
                       <button 
-                        className={`text-foreground/70 hover:text-primary transition-colors ${userVote === 1 ? "text-primary" : ""}`}
+                        className={`text-foreground/70 hover:text-primary transition-colors flex items-center gap-1 py-1 px-2 ${userVote === 1 ? "text-primary" : ""}`}
                         onClick={() => handleVote(1)}
                         disabled={isVoting}
                       >
                         {isVoting && userVote === 1 ? (
                           <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill={userVote === 1 ? "currentColor" : "none"}
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m5 15 7-7 7 7" />
-                          </svg>
+                          <>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill={userVote === 1 ? "currentColor" : "none"}
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="m5 15 7-7 7 7" />
+                            </svg>
+                          </>
                         )}
                       </button>
                       
@@ -396,7 +342,7 @@ export default function IdeaPage() {
                       </span>
                       
                       <button 
-                        className={`text-foreground/70 hover:text-destructive transition-colors ${userVote === -1 ? "text-destructive" : ""}`}
+                        className={`text-foreground/70 hover:text-destructive transition-colors flex items-center gap-1 py-1 px-2 ${userVote === -1 ? "text-destructive" : ""}`}
                         onClick={() => handleVote(-1)}
                         disabled={isVoting}
                       >
@@ -419,35 +365,91 @@ export default function IdeaPage() {
                         )}
                       </button>
                     </div>
+                    
+                    {isUserLoaded && user && (
+                      <div>
+                        {isUserAssigned ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={handleUnpickIdea}
+                            disabled={isUnassigning}
+                            className="h-8 px-3 text-xs sm:text-sm"
+                          >
+                            {isUnassigning ? (
+                              <>
+                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                                <span className="sm:hidden">Unpick</span>
+                                <span className="hidden sm:inline">Unassigning...</span>
+                              </>
+                            ) : (
+                              <>Unpick</>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="default"
+                            size="sm"
+                            onClick={handlePickIdea}
+                            disabled={isAssigning}
+                            className="h-8 px-3 text-xs sm:text-sm"
+                          >
+                            {isAssigning ? (
+                              <>
+                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                                <span className="sm:hidden">Pick</span>
+                                <span className="hidden sm:inline">Assigning...</span>
+                              </>
+                            ) : (
+                              <>Pick</>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="prose max-w-none dark:prose-invert">
+                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed text-sm sm:text-base">
+                      {idea.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 my-2 sm:my-4">
+                    {idea.tags && idea.tags.map((tag: string) => (
+                      <Badge key={tag} variant="secondary" className="rounded-md px-2 py-0.5 sm:px-3 sm:py-1 text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
+            
+            {/* Voting controls are now combined in the section above */}
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6 md:px-6 lg:px-8">
+        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
           <Tabs defaultValue="discussion" className="w-full">
-            <TabsList className="border-b w-full mb-8">
+            <TabsList className="border-b w-full mb-4 sm:mb-8 overflow-x-auto flex flex-nowrap -mx-3 px-3 sm:mx-0 sm:px-0">
               <TabsTrigger 
                 value="discussion" 
-                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm whitespace-nowrap"
               >
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Discussion</span>
                   <span className="text-xs text-muted-foreground">{commentCount}</span>
                 </div>
               </TabsTrigger>
               
-
-              
               <TabsTrigger 
                 value="team" 
-                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm whitespace-nowrap"
               >
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Contributors</span>
                   <span className="text-xs text-muted-foreground">{assignments.length}</span>
                 </div>
@@ -455,10 +457,10 @@ export default function IdeaPage() {
               
               <TabsTrigger 
                 value="history" 
-                className="px-4 py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 data-[state=active]:border-b-2 data-[state=active]:border-primary text-xs sm:text-sm whitespace-nowrap"
               >
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4" />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <History className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>History</span>
                 </div>
               </TabsTrigger>

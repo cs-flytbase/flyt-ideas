@@ -2,34 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { MainLayout } from "@/components/main-layout";
-import { useToast } from "@/components/ui/use-toast";
-import { toast } from "@/components/ui/use-toast";
-import { Toaster } from "@/components/ui/toaster";
-// Custom utility to strip markdown for post previews
-const stripMarkdown = (text: string) => {
-  if (!text) return '';
-  
-  return text
-    // Remove headers (# Header)
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic markers
-    .replace(/[\*_]{1,3}([^*_]+)[\*_]{1,3}/g, '$1')
-    // Remove code blocks
-    .replace(/```[\s\S]*?```/g, '')
-    // Remove inline code
-    .replace(/`([^`]+)`/g, '$1')
-    // Remove links but keep text [text](url)
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove images ![]()
-    .replace(/!\[([^\]]+)\]\([^)]+\)/g, '')
-    // Remove horizontal rules
-    .replace(/^---$/gm, '')
-    // Remove blockquotes
-    .replace(/^>\s+/gm, '')
-    // Keep newlines but remove extra whitespace
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-};
 import { 
   Card, 
   CardContent, 
@@ -70,8 +42,8 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { 
-  ArrowUp, 
-  ArrowDown, 
+  ThumbsUp, 
+  ThumbsDown, 
   MessageSquare, 
   Loader2, 
   Filter,
@@ -139,31 +111,14 @@ const PostsPage = () => {
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching posts...');
       
       // In a real app, we would filter by tab 
       const response = await fetch('/api/posts');
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
       const data = await response.json();
-      console.log('Posts data received:', data);
       
-      if (data && Array.isArray(data.posts)) {
-        console.log(`Found ${data.posts.length} posts`);
-        setPosts(data.posts);
-      } else if (data && Array.isArray(data)) {
-        // Handle case where API might return array directly
-        console.log(`Found ${data.length} posts (direct array)`);
-        setPosts(data);
-      } else {
-        console.error('Unexpected data format for posts:', data);
-        setPosts([]);
-      }
+      setPosts(data.posts || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      setPosts([]);
     } finally {
       setIsLoading(false);
     }
@@ -269,9 +224,6 @@ const PostsPage = () => {
   
   return (
     <MainLayout>
-      {/* Add Toaster to render toast notifications */}
-      <Toaster />
-      
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -322,7 +274,7 @@ const PostsPage = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
+          <div className="space-y-6">
             {posts.map(post => (
               <PostCard
                 key={post.id}
@@ -443,32 +395,20 @@ const PostCard = ({ post, userVote, isVoting, onVote, isUserLoaded, user }: Post
     const shareTitle = post.title || 'Check out this post!';
     
     switch(platform) {
-      case 'slack':
-        // Implement proper Slack sharing based on your requirements
-        window.open(`https://slack.com/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`, '_blank');
-        toast({
-          title: "Shared on Slack",
-          description: "Post has been shared to Slack successfully",
-          variant: "default",
-        });
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+        break;
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`, '_blank');
         break;
       case 'copy':
       default:
         navigator.clipboard.writeText(shareUrl)
           .then(() => {
-            toast({
-              title: "Link copied",
-              description: "Link has been copied to clipboard",
-              variant: "default",
-            });
+            alert('Link copied to clipboard!');
           })
-          .catch(error => {
-            console.error('Failed to copy: ', error);
-            toast({
-              title: "Error",
-              description: "Failed to copy link to clipboard",
-              variant: "destructive",
-            });
+          .catch(err => {
+            console.error('Failed to copy: ', err);
           });
         break;
     }
@@ -485,8 +425,8 @@ const PostCard = ({ post, userVote, isVoting, onVote, isUserLoaded, user }: Post
   };
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden border-border/40 hover:border-border transition-all duration-200 hover:shadow-lg shadow-sm">
-      <CardHeader className="pb-3 bg-muted/20">
+    <Card className="mb-6 overflow-hidden border-border/40 hover:border-border transition-all duration-200 hover:shadow-md">
+      <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10 ring-2 ring-background ring-offset-2 ring-offset-primary/10">
@@ -530,100 +470,95 @@ const PostCard = ({ post, userVote, isVoting, onVote, isUserLoaded, user }: Post
         </div>
       </CardHeader>
       
-      <CardContent className="pb-4 flex-grow">
-        <div>
-          <Link href={`/posts/${post.id}`} className="hover:underline">
-            <CardTitle className="text-xl mb-2 line-clamp-2 text-primary/90 hover:text-primary transition-colors">{post.title}</CardTitle>
-          </Link>
-          
-          <CardDescription className="line-clamp-3 mb-4 text-foreground/80 whitespace-pre-line">
-            {(() => {
-              const content = stripMarkdown(post.description || (post.content ? post.content : ''));
-              return content.length > 150 ? content.substring(0, 150) + '...' : content;
-            })()}
-          </CardDescription>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3 mt-2">
-              {tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs bg-primary/5 hover:bg-primary/10 transition-colors">
-                  #{tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
+      <CardContent className="pb-3">
+        <Link href={`/posts/${post.id}`} className="block group">
+          <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+            {post.title}
+          </h3>
+        </Link>
+        
+        <p className="text-muted-foreground mb-4">
+          {post.description || post.content?.substring(0, 150) + (post.content?.length > 150 ? '...' : '')}
+        </p>
+        
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 my-3">
+            {tags.map((tag, i) => (
+              <Badge key={i} variant="secondary" className="hover:bg-secondary/80 cursor-pointer">
+                #{tag}
+              </Badge>
+            ))}
+          </div>
+        )}
       </CardContent>
       
-      <CardFooter className="border-t pt-3 flex justify-between items-center bg-muted/5">
-        <div className="flex items-center gap-2">
-          {/* Vote buttons - Reddit style pill */}
-          <div className="flex items-center bg-muted/50 rounded-full py-1 px-3">
-            <button
-              className="flex items-center px-1"
-              onClick={() => isUserLoaded && onVote(post.id, 1)}
-              disabled={isVoting}
-            >
-              {isVoting && userVote === 1 ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className={`h-4 w-4 mr-1 ${userVote === 1 ? 'text-orange-500' : ''}`} />
-              )}
-            </button>
-            
-            <span className="text-xs font-medium">{post.upvotes || 0}</span>
-            
-            <div className="mx-2 h-4 border-r border-muted"></div>
-            
-            <button
-              className="flex items-center px-1"
-              onClick={() => isUserLoaded && onVote(post.id, -1)}
-              disabled={isVoting}
-            >
-              {isVoting && userVote === -1 ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowDown className={`h-4 w-4 ${userVote === -1 ? 'text-blue-500' : ''}`} />
-              )}
-            </button>
-          </div>
+      <CardFooter className="border-t pt-3 flex justify-between items-center bg-muted/10">
+        <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`rounded-full px-3 ${userVote === 1 ? 'text-primary bg-primary/10' : 'hover:bg-primary/5'}`}
+            onClick={() => isUserLoaded && onVote(post.id, 1)}
+            disabled={!isUserLoaded || isVoting}
+          >
+            <ArrowUpCircle className="h-4 w-4 mr-1.5" />
+            <span className="font-medium">{post.upvotes || 0}</span>
+          </Button>
           
-          {/* Comments button */}
-          <Link href={`/posts/${post.id}`} className="flex items-center gap-1 bg-muted/50 rounded-full py-1 px-3">
-            <MessageSquare className="h-4 w-4" />
-            <span className="text-xs font-medium">{post.comments ? post.comments.length : 0}</span>
+          <Link 
+            href={`/posts/${post.id}`} 
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors rounded-full px-3 py-1.5 hover:bg-muted/50"
+          >
+            <MessageSquare className="h-4 w-4 mr-1.5" />
+            <span className="font-medium text-xs">{post.comments?.length || 0}</span>
           </Link>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full px-3 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950 dark:hover:text-red-400"
+            onClick={handleHeartClick}
+          >
+            <Heart className={`h-4 w-4 mr-1.5 ${animateHeart ? 'animate-pulse text-red-500' : ''}`} />
+            <span className="font-medium text-xs">Like</span>
+          </Button>
         </div>
         
         <div className="flex items-center space-x-1">
-          {/* Share on Slack button with dialog */}
           <AlertDialog open={shareOpen} onOpenChange={setShareOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Share2 className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="rounded-full px-3">
+                <Share2 className="h-4 w-4 mr-1.5" />
+                <span className="font-medium text-xs">Share</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Share this post</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Share this post on Slack or copy the link.
+                  Choose how you'd like to share this post.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="flex flex-col gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4 py-4">
                 <Button 
                   variant="outline" 
-                  className="flex items-center justify-center bg-[#4A154B] text-white hover:bg-[#611f64]"
-                  onClick={() => handleShare('slack')}
+                  className="flex items-center justify-center"
+                  onClick={() => handleShare('facebook')}
                 >
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6.52 13.71c0 1.28-1.04 2.32-2.32 2.32s-2.32-1.04-2.32-2.32 1.04-2.32 2.32-2.32h2.32v2.32zm1.17 0c0-1.28 1.04-2.32 2.32-2.32s2.32 1.04 2.32 2.32v5.82c0 1.28-1.04 2.32-2.32 2.32s-2.32-1.04-2.32-2.32v-5.82zm2.32-9.37c-1.28 0-2.32-1.04-2.32-2.32S8.73 0 10.01 0s2.32 1.04 2.32 2.32v2.32h-2.32zm0 1.17c1.28 0 2.32 1.04 2.32 2.32s-1.04 2.32-2.32 2.32H4.2c-1.28 0-2.32-1.04-2.32-2.32S2.92 4.51 4.2 4.51h5.82zM17.48 10.01c0-1.28 1.04-2.32 2.32-2.32s2.32 1.04 2.32 2.32-1.04 2.32-2.32 2.32h-2.32v-2.32zm-1.17 0c0 1.28-1.04 2.32-2.32 2.32s-2.32-1.04-2.32-2.32V4.2c0-1.28 1.04-2.32 2.32-2.32s2.32 1.04 2.32 2.32v5.82zm-2.32 9.37c1.28 0 2.32 1.04 2.32 2.32s-1.04 2.32-2.32 2.32-2.32-1.04-2.32-2.32v-2.32h2.32zm0-1.17c-1.28 0-2.32-1.04-2.32-2.32s1.04-2.32 2.32-2.32h5.82c1.28 0 2.32 1.04 2.32 2.32s-1.04 2.32-2.32 2.32h-5.82z" />
-                  </svg>
-                  Share on Slack
+                  <Facebook className="mr-2 h-4 w-4" />
+                  Facebook
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="flex items-center justify-start"
+                  className="flex items-center justify-center"
+                  onClick={() => handleShare('twitter')}
+                >
+                  <Twitter className="mr-2 h-4 w-4" />
+                  Twitter
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex items-center justify-start col-span-2"
                   onClick={() => handleShare('copy')}
                 >
                   <LinkIcon className="mr-2 h-4 w-4" />
@@ -637,16 +572,22 @@ const PostCard = ({ post, userVote, isVoting, onVote, isUserLoaded, user }: Post
           </AlertDialog>
           
           <Button
-            variant="secondary"
-            size="icon"
-            className="rounded-full ml-2 bg-primary/10 hover:bg-primary/20 text-primary"
+            variant="ghost"
+            size="sm"
+            className={`rounded-full px-3 ${saved ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-950' : ''}`}
+            onClick={() => setSaved(!saved)}
+          >
+            <BookmarkIcon className="h-4 w-4 mr-1.5" />
+            <span className="font-medium text-xs">{saved ? 'Saved' : 'Save'}</span>
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full ml-2"
             asChild
           >
-            <Link href={`/posts/${post.id}`}>
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6.1584 3.13508C6.35985 2.94621 6.67627 2.95642 6.86514 3.15788L10.6151 7.15788C10.7954 7.3502 10.7954 7.64949 10.6151 7.84182L6.86514 11.8418C6.67627 12.0433 6.35985 12.0535 6.1584 11.8646C5.95694 11.6757 5.94673 11.3593 6.1356 11.1579L9.565 7.49985L6.1356 3.84182C5.94673 3.64036 5.95694 3.32394 6.1584 3.13508Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
-              </svg>
-            </Link>
+            <Link href={`/posts/${post.id}`}>Read more</Link>
           </Button>
         </div>
       </CardFooter>

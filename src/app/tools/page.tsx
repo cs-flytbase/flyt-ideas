@@ -197,17 +197,17 @@ const ToolsPage = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-8 px-4 py-6 md:px-6 lg:px-8">
-        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+      <div className="space-y-6 px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold">Tools Directory</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Tools Directory</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Discover and share tools that enhance productivity
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center">
             <button 
-              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
+              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
               onClick={() => setIsModalOpen(true)}
             >
               <Plus className="mr-1 h-4 w-4" />
@@ -216,8 +216,8 @@ const ToolsPage = () => {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
-          <div className="flex items-center space-x-2">
+        <div className="rounded-lg border bg-card p-3 sm:p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:space-x-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -228,7 +228,7 @@ const ToolsPage = () => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-primary"
+              className="text-primary hidden sm:block"
             >
               <path d="M8.5 8.5 3 15l8.5 9 8.5-9-5.5-6.5L8.5 2 3 6l5.5 2.5Z" />
               <path d="M11 13 8.5 8.5 6 13l2.5 3 2.5-3Z" />
@@ -241,34 +241,38 @@ const ToolsPage = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Describe your problem, and I'll suggest the right tools..."
-                className="w-full rounded-md border-0 bg-transparent px-3 py-2 text-base shadow-none focus:outline-none focus:ring-0"
+                placeholder="Describe your problem..."
+                className="w-full rounded-md border-0 bg-transparent px-3 py-2 text-sm sm:text-base shadow-none focus:outline-none focus:ring-0"
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
               />
             </div>
             <button 
-              className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
+              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-3 sm:px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1"
               onClick={handleGetSuggestions}
               disabled={suggesting || !queryText.trim()}
             >
               {suggesting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Suggesting...
+                  <span className="hidden sm:inline">Suggesting...</span>
+                  <span className="sm:hidden">Loading...</span>
                 </>
               ) : (
-                "Get Suggestions"
+                <>
+                  <span className="hidden sm:inline">Get Suggestions</span>
+                  <span className="sm:hidden">Suggest</span>
+                </>
               )}
             </button>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0">
           {categories.map((category, i) => (
             <button
               key={i}
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+              className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
                 category === activeCategory
                   ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
                   : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
@@ -288,7 +292,7 @@ const ToolsPage = () => {
           <>
             {/* Main tools grid */}
             {!suggestedTools && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {tools.map((tool) => (
                   <ToolCard
                     key={tool.id}
@@ -303,7 +307,7 @@ const ToolsPage = () => {
                 ))}
                 
                 {tools.length === 0 && (
-                  <div className="md:col-span-2 lg:col-span-3 py-12 text-center">
+                  <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-8 sm:py-12 text-center">
                     <p className="text-muted-foreground">No tools found in this category</p>
                   </div>
                 )}

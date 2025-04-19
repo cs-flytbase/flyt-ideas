@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TagInput } from "@/components/ui/tag-input";
 import { 
   ArrowUpRight,
   CheckSquare,
@@ -71,12 +73,17 @@ interface Idea {
   upvotes: number;
   created_at: string;
   updated_at: string;
+  tags?: string[] | string;
   assignments?: {
     id: string;
     user_id: string;
     status: string;
     assigned_at: string;
     completed_at?: string;
+    assignee?: {
+      display_name: string;
+      avatar_url?: string;
+    };
   }[];
   users?: {
     display_name: string;
@@ -133,6 +140,8 @@ const DashboardPage = () => {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedIsPublic, setEditedIsPublic] = useState(false);
+  const [editedStatus, setEditedStatus] = useState("draft");
+  const [editedTags, setEditedTags] = useState<string[]>([]);
 
   // State for new idea creation
   const [isNewIdeaDialogOpen, setIsNewIdeaDialogOpen] = useState(false);
@@ -141,6 +150,7 @@ const DashboardPage = () => {
   const [newIdeaIsPublished, setNewIdeaIsPublished] = useState(false);
   const [newIdeaStatus, setNewIdeaStatus] = useState("draft");
   const [newIdeaTags, setNewIdeaTags] = useState("");
+  const [tagArray, setTagArray] = useState<string[]>([]);
   const [isCreatingIdea, setIsCreatingIdea] = useState(false);
 
   // Get current user
@@ -234,6 +244,13 @@ const DashboardPage = () => {
     setEditedTitle(idea.title);
     setEditedDescription(idea.description);
     setEditedIsPublic(idea.is_public);
+    setEditedStatus(idea.status);
+    
+    // Initialize tags if they exist, otherwise empty array
+    const tags = typeof idea.tags === 'string' 
+      ? idea.tags.split(',').map(tag => tag.trim()).filter(tag => tag) 
+      : Array.isArray(idea.tags) ? idea.tags : [];
+    setEditedTags(tags);
   };
 
   // Function to close dialog
@@ -254,7 +271,9 @@ const DashboardPage = () => {
         body: JSON.stringify({
           title: editedTitle,
           description: editedDescription,
-          isPublic: editedIsPublic
+          isPublic: editedIsPublic,
+          status: editedStatus,
+          tags: editedTags
         }),
         credentials: 'include',  // Include cookies and auth credentials
       });
@@ -291,17 +310,13 @@ const DashboardPage = () => {
     try {
       setIsCreatingIdea(true);
       
-      // Parse tags from comma-separated string to array
-      const tagsArray = newIdeaTags.split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0);
-      
+      // Use the tag array directly instead of parsing from string
       const newIdea = {
         title: newIdeaTitle,
         description: newIdeaDescription,
         is_published: newIdeaIsPublished,
         status: newIdeaStatus,
-        tags: tagsArray
+        tags: tagArray
       };
 
       const response = await fetch('/api/ideas', {
@@ -341,6 +356,7 @@ const DashboardPage = () => {
     setNewIdeaIsPublished(false);
     setNewIdeaStatus("draft");
     setNewIdeaTags("");
+    setTagArray([]);
   };
 
   // Function to handle toggling a checklist item's completed status
@@ -691,6 +707,8 @@ const DashboardPage = () => {
       setChecklistToDeleteId(null);
     }
   };
+
+
 
   return (
     <MainLayout>
@@ -1236,13 +1254,17 @@ const DashboardPage = () => {
                               
                             return (
                               <div className="flex items-center space-x-2">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarFallback>
-                                    {selectedIdea?.users?.display_name?.charAt(0) || selectedIdea?.creator_id?.charAt(0) || '?'}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <Link href={`/users/${selectedIdea?.creator_id}`}>
+                                  <Avatar className="h-8 w-8 cursor-pointer">
+                                    <AvatarFallback>
+                                      {selectedIdea?.users?.display_name?.charAt(0) || selectedIdea?.creator_id?.charAt(0) || '?'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </Link>
                                 <div>
-                                  <p className="text-sm font-medium">{selectedIdea?.users?.display_name || 'User'}</p>
+                                  <Link href={`/users/${selectedIdea?.creator_id}`} className="hover:underline">
+                                    <p className="text-sm font-medium">{selectedIdea?.users?.display_name || 'User'}</p>
+                                  </Link>
                                   <p className="text-xs text-muted-foreground">Creator</p>
                                 </div>
                               </div>
@@ -1271,11 +1293,15 @@ const DashboardPage = () => {
                           return selectedIdea.assignments.map(assignment => (
                             <div key={assignment.id} className="flex items-center justify-between py-2 border-t first:border-t-0">
                               <div className="flex items-center space-x-2">
-                                <Avatar className="h-6 w-6">
-                                  <AvatarFallback className="text-xs">{assignment.user_id.charAt(0)}</AvatarFallback>
-                                </Avatar>
+                                <Link href={`/users/${assignment.user_id}`}>
+                                  <Avatar className="h-6 w-6 cursor-pointer">
+                                    <AvatarFallback className="text-xs">{(assignment.assignee?.display_name || assignment.user_id).charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                </Link>
                                 <div>
-                                  <p className="text-sm">{assignment.user_id}</p>
+                                  <Link href={`/users/${assignment.user_id}`} className="hover:underline">
+                                    <p className="text-sm">{assignment.assignee?.display_name || assignment.user_id}</p>
+                                  </Link>
                                   <p className="text-xs text-muted-foreground">
                                     {new Date(assignment.assigned_at).toLocaleDateString()}
                                   </p>
@@ -1341,6 +1367,37 @@ const DashboardPage = () => {
                 className="col-span-3"
                 rows={4}
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-status" className="text-right">
+                Status
+              </Label>
+              <div className="col-span-3">
+                <Select value={editedStatus} onValueChange={setEditedStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-tags" className="text-right">
+                Tags
+              </Label>
+              <div className="col-span-3">
+                <TagInput
+                  tags={editedTags}
+                  setTags={setEditedTags}
+                  suggestions={["technology", "ai", "project", "design", "development", "feature", "bug", "enhancement", "mobile", "web"]}
+                  placeholder="Add tags (press Enter or comma to add)"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="visibility" className="text-right">
@@ -1418,29 +1475,32 @@ const DashboardPage = () => {
               <Label htmlFor="new-status" className="text-right">
                 Status
               </Label>
-              <select
-                id="new-status"
-                value={newIdeaStatus}
-                onChange={(e) => setNewIdeaStatus(e.target.value)}
-                className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="draft">Draft</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="archived">Archived</option>
-              </select>
+              <div className="col-span-3">
+                <Select value={newIdeaStatus} onValueChange={setNewIdeaStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="new-tags" className="text-right">
                 Tags
               </Label>
-              <Input
-                id="new-tags"
-                value={newIdeaTags}
-                onChange={(e) => setNewIdeaTags(e.target.value)}
-                className="col-span-3"
-                placeholder="technology, ai, project (comma-separated)"
-              />
+              <div className="col-span-3">
+                <TagInput
+                  tags={tagArray}
+                  setTags={setTagArray}
+                  suggestions={["technology", "ai", "project", "design", "development", "feature", "bug", "enhancement", "mobile", "web"]}
+                  placeholder="Add tags (press Enter or comma to add)"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="new-visibility" className="text-right">

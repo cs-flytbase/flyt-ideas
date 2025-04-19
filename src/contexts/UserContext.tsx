@@ -91,8 +91,35 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Helper function to retry a promise with exponential backoff
+  const retryWithBackoff = async (
+    fn: () => Promise<any>,
+    retries = 3,
+    delay = 300,
+    backoffFactor = 2
+  ) => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries === 0) throw error;
+      
+      console.log(`Retrying after ${delay}ms, ${retries} retries left...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      return retryWithBackoff(fn, retries - 1, delay * backoffFactor, backoffFactor);
+    }
+  };
+
   const syncSupabaseUser = async () => {
-    if (!clerkUser || !supabaseUser) return;
+    if (!clerkUser) {
+      console.error('Cannot sync user: Clerk user is null or undefined');
+      return;
+    }
+    
+    if (!supabaseUser) {
+      console.error('Cannot sync user: Supabase user is null or undefined');
+      return;
+    }
 
     try {
       // Get email from the first email address in the list
@@ -103,26 +130,53 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       // Build a display name from firstName and lastName
       const fullName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
       
-      const { data, error } = await supabase
-        .from('users')
-        .update({
-          email: primaryEmail,
-          avatar_url: clerkUser.imageUrl,
-          display_name: fullName || 'User',
-          is_online: true,
-          last_active: new Date().toISOString()
-        })
-        .eq('id', clerkUser.id)
-        .select()
-        .single();
+      // For debugging
+      console.log('Syncing user with data:', {
+        id: clerkUser.id,
+        email: primaryEmail,
+        avatar_url: clerkUser.imageUrl,
+        display_name: fullName || 'User'
+      });
+      
+      // Check if Supabase URL is available
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        console.error('Supabase URL or anon key is missing. Cannot sync user.');
+        return;
+      }
+
+      // Use retry logic for network operations
+      const result = await retryWithBackoff(async () => {
+        return await supabase
+          .from('users')
+          .update({
+            email: primaryEmail,
+            avatar_url: clerkUser.imageUrl,
+            display_name: fullName || 'User',
+            is_online: true,
+            last_active: new Date().toISOString()
+          })
+          .eq('id', clerkUser.id)
+          .select()
+          .single();
+      });
+      
+      const { data, error } = result;
 
       if (error) {
-        console.error('Error syncing user in Supabase:', error);
+        console.error('Error syncing user in Supabase:', JSON.stringify(error));
       } else {
+        console.log('Successfully synced user in Supabase');
         setSupabaseUser(data);
       }
     } catch (error) {
-      console.error('Failed to sync Supabase user:', error);
+      // Check for network errors specifically
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('Network error when syncing user with Supabase. Please check your connection and Supabase credentials.');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : '';
+        console.error(`Failed to sync Supabase user: ${errorMessage}`, { error, stack: errorStack });
+      }
     }
   };
 

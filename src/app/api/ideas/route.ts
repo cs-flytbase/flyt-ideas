@@ -68,7 +68,15 @@ export async function GET(request: NextRequest): Promise<Response> {
     // Fetch ideas where the user is assigned (picked)
     const { data: myPicksIdeas, error: myPicksIdeasError } = await supabase
       .from('ideas')
-      .select('*, comments(count), users:creator_id(display_name, avatar_url), assignments:idea_assignments!inner(*)')
+      .select(`
+        *,
+        comments(count),
+        users:creator_id(display_name, avatar_url),
+        assignments:idea_assignments!inner(
+          *,
+          assignee:user_id(display_name, avatar_url)
+        )
+      `)
       .eq('idea_assignments.user_id', userId)
       .order('created_at', { ascending: false });
 

@@ -9,6 +9,7 @@ interface ToolCardProps {
   usageCount: number;
   powerUsers: string[];
   icon: React.ReactNode;
+  className?: string;
 }
 
 export function ToolCard({
@@ -19,9 +20,12 @@ export function ToolCard({
   usageCount,
   powerUsers,
   icon,
+  className,
 }: ToolCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-3 sm:p-4 shadow-sm transition-all hover:shadow-md">
+    <div
+      className={`${className} rounded-lg border bg-card p-3 sm:p-4 shadow-sm transition-all hover:shadow-md`}
+    >
       <div className="mb-2 sm:mb-3 flex items-center">
         <div className="mr-2 sm:mr-3 flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
           {icon}

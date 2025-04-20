@@ -287,10 +287,10 @@ export default function ToolDetailPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-8 px-4 py-6 md:px-6 lg:px-8">
+      <div className="w-full min-w-[320px] px-4 py-4 sm:px-6 sm:py-6 mx-auto max-w-4xl overflow-x-hidden">
         {/* Tool Header */}
-        <div className="flex flex-col space-y-4 md:flex-row md:items-start md:justify-between md:space-y-0">
-          <div className="flex items-start space-x-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
             <div className="h-12 w-12 rounded-lg bg-primary/10 p-2 flex items-center justify-center text-primary">
             {/* ts-ignore */}
               {toolIcons[tool.icon_name]}
@@ -377,7 +377,9 @@ export default function ToolDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-base">{tool.description}</p>
+                <article className="prose dark:prose-invert max-w-full break-words hyphens-auto overflow-wrap-anywhere [&>*]:max-w-full [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:text-sm [&_pre]:whitespace-pre-wrap [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full [&_iframe]:max-w-full [&_a]:break-all">
+                  <p className="text-base">{tool.description}</p>
+                </article>
               </CardContent>
             </Card>
             

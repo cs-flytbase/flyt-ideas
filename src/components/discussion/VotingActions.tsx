@@ -118,7 +118,7 @@ export function VotingActions({
         >
           <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="text-xs sm:text-sm">
-            {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
+            {commentCount}
           </span>
         </button>
         

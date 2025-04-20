@@ -1,5 +1,3 @@
-// app/tools/page.tsx
-
 "use client"
 
 import { MainLayout } from "@/components/main-layout";
@@ -278,21 +276,50 @@ const ToolsPage = () => {
 
   return (
     <MainLayout>
-      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto w-full space-y-6">
-        <ToolsHeader onAdd={() => setIsModalOpen(true)} />
+      <div className="w-full min-w-[320px] px-4 py-4 sm:px-6 sm:py-6 mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Tools Directory</h1>
+          <Button 
+            size="sm" 
+            className="w-full sm:w-auto"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Tool
+          </Button>
+        </div>
         
-        <ToolsSuggestArea
-          queryText={queryText}
-          onQueryChange={setQueryText}
-          onGetSuggestions={handleGetSuggestions}
-          suggesting={suggesting}
-        />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              placeholder="Describe your problem..."
+              value={queryText}
+              onChange={(e) => setQueryText(e.target.value)}
+              className="w-full h-12 text-base"
+            />
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto"
+              onClick={handleGetSuggestions}
+              disabled={suggesting || !queryText.trim()}
+            >
+              {suggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Suggestions'}
+            </Button>
+          </div>
+        </div>
         
-        <ToolsCategoryFilter
-          categories={categories}
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-        />
+        <div className="flex flex-wrap gap-2">
+          {categories.map(category => (
+            <Badge 
+              key={category} 
+              variant={activeCategory === category ? 'default' : 'secondary'}
+              onClick={() => setActiveCategory(category)}
+              className="cursor-pointer"
+            >
+              {category}
+            </Badge>
+          ))}
+        </div>
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -308,7 +335,7 @@ const ToolsPage = () => {
                   <span className="text-muted-foreground text-sm font-normal ml-2">{tools.length} results</span>
                 </h2>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {tools.map((tool) => (
                     <ToolCard
                       key={tool.id}
@@ -319,6 +346,7 @@ const ToolsPage = () => {
                       usageCount={tool.usage_count}
                       powerUsers={tool.power_users?.map(user => user.display_name) || []}
                       icon={tool.icon}
+                      className="w-full"
                     />
                   ))}
                   

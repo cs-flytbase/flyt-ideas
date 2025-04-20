@@ -156,7 +156,7 @@ export default function PostPage() {
 
   return (
     <MainLayout>
-      <div className="px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 w-full bg-background max-w-7xl mx-auto">
+      <div className="px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 w-full bg-background max-w-screen mx-auto">
         {/* Post header with author info, title and tags */}
         <DiscussionHeader
           title={post.title}
@@ -168,7 +168,7 @@ export default function PostPage() {
         />
 
         {/* Post content */}
-        <div className="bg-white dark:bg-black rounded-lg border shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-black rounded-lg border shadow-sm ">
           <div className="p-3 sm:p-4 md:p-5">
             {/* Post content with improved typography and spacing */}
             <ContentDisplay content={post.content} />
@@ -185,21 +185,21 @@ export default function PostPage() {
             />
           </div>
         </div>
-        
-        {/* Comments section */}
-        <div className="mt-4 bg-white dark:bg-black rounded-lg border shadow-sm overflow-hidden">
-          <div className="border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between p-4">
-              <h3 className="text-sm font-medium">Comments ({comments.length})</h3>
-              
-              <Button 
+        <Button 
                 onClick={() => setShowCommentBox(true)}
-                className="rounded-full w-full sm:w-auto border border-muted flex items-center justify-start bg-muted/10 text-muted-foreground text-base sm:text-sm px-4 py-2 sm:px-6 sm:py-2 mb-4 transition-all duration-150"
+                className="rounded-full w-full border border-muted flex items-center justify-center bg-muted/10  text-base sm:text-sm px-4 py-2 sm:px-6 sm:py-2 mb-2 transition-all duration-150 text-white hover:text-black cursor-pointer mt-2"
                 aria-label="Add a comment"
               >
                 <span className="hidden sm:inline">+ Add a comment</span>
                 <span className="sm:hidden w-full text-center">+ Add comment</span>
               </Button>
+        {/* Comments section */}
+        <div className="mt-1 bg-white dark:bg-black rounded-lg border shadow-sm overflow-hidden">
+          <div className="border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4">
+              <h3 className="text-sm font-medium">Comments ({comments.length})</h3>
+              
+
               <div className="relative w-48 md:w-64">
                 <input
                   type="text"

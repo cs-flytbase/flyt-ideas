@@ -86,18 +86,6 @@ export async function PATCH(
 
     if ('title' in updates) updateData.title = updates.title;
     if ('description' in updates) updateData.description = updates.description;
-    if ('status' in updates) updateData.status = updates.status;
-    if ('tags' in updates) updateData.tags = Array.isArray(updates.tags) ? updates.tags.join(',') : updates.tags;
-
-    if (updates.is_published === true && !idea.is_published) {
-      updateData.is_published = true;
-      updateData.published_at = new Date().toISOString();
-    } else if ('is_published' in updates) {
-      updateData.is_published = updates.is_published;
-    }
-    
-    // Handle isPublic which is different from is_published
-    if ('isPublic' in updates) updateData.is_public = updates.isPublic;
 
     const { data: updated, error: updateError } = await supabase
       .from('ideas')

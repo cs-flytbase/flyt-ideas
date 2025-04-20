@@ -6,6 +6,16 @@ import { useUser } from "@/contexts/UserContext";
 import { MainLayout } from "@/components/main-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Import our modular components
 import { 
@@ -15,6 +25,7 @@ import {
   PostList, 
   PostDialog 
 } from "@/components/dashboard";
+import { Button } from "@/components/ui/button";
 
 // Types 
 interface Idea {
@@ -83,7 +94,7 @@ const DashboardPage = () => {
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
   
   // State for idea editing
-  const [editingIdeaId, setEditingIdeaId] = useState<string | null>(null);
+  const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedIsPublic, setEditedIsPublic] = useState(false);
@@ -414,6 +425,18 @@ const DashboardPage = () => {
     }
   };
   
+  // Add this function to handle publish state updates
+  const handlePublishIdea = async (ideaId: string) => {
+    try {
+      const updatedIdeas = myIdeas.map(idea => 
+        idea.id === ideaId ? { ...idea, is_published: true } : idea
+      );
+      setMyIdeas(updatedIdeas);
+    } catch (error) {
+      console.error('Error updating local state:', error);
+    }
+  };
+  
   // Post handlers
   const handleEditPost = (post: Post) => {
     setEditingPostId(post.id);
@@ -544,15 +567,19 @@ const DashboardPage = () => {
                         ideas={myIdeas}
                         selectedIdeaId={selectedIdeaId}
                         onIdeaClick={handleIdeaClick}
-                        onEditIdea={() => {}}
-                        onPublishIdea={() => {}}
+                        onEditIdea={(idea) => {
+                          setEditingIdea(idea);
+                          setEditedTitle(idea.title);
+                          setEditedDescription(idea.description || "");
+                        }}
+                        onPublishIdea={handlePublishIdea}
                         onNewIdeaClick={() => setIsNewIdeaDialogOpen(true)}
                       />
                     ) : (
                       <div className="p-6 text-center">
                         <div className="rounded-full w-12 h-12 bg-muted flex items-center justify-center mx-auto mb-3">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-muted-foreground">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                           </svg>
                         </div>
                         <h3 className="font-medium">No ideas found</h3>
@@ -592,8 +619,12 @@ const DashboardPage = () => {
                         ideas={myPicksIdeas}
                         selectedIdeaId={selectedIdeaId}
                         onIdeaClick={handleIdeaClick}
-                        onEditIdea={() => {}}
-                        onPublishIdea={() => {}}
+                        onEditIdea={(idea) => {
+                          setEditingIdea(idea);
+                          setEditedTitle(idea.title);
+                          setEditedDescription(idea.description || "");
+                        }}
+                        onPublishIdea={handlePublishIdea}
                         onNewIdeaClick={() => setIsNewIdeaDialogOpen(true)}
                       />
                     ) : (
@@ -634,8 +665,12 @@ const DashboardPage = () => {
                         ideas={collaboratedIdeas}
                         selectedIdeaId={selectedIdeaId}
                         onIdeaClick={handleIdeaClick}
-                        onEditIdea={() => {}}
-                        onPublishIdea={() => {}}
+                        onEditIdea={(idea) => {
+                          setEditingIdea(idea);
+                          setEditedTitle(idea.title);
+                          setEditedDescription(idea.description || "");
+                        }}
+                        onPublishIdea={handlePublishIdea}
                         onNewIdeaClick={() => setIsNewIdeaDialogOpen(true)}
                       />
                     ) : (
@@ -722,6 +757,58 @@ const DashboardPage = () => {
         />
 
         {/* Idea Edit Dialog */}
+        {editingIdea && (
+          <Dialog open={!!editingIdea} onOpenChange={() => setEditingIdea(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Idea</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Title</Label>
+                  <Input 
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/ideas/${editingIdea.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          title: editedTitle,
+                          description: editedDescription
+                        })
+                      });
+                      
+                      if (response.ok) {
+                        fetchIdeas();
+                        setEditingIdea(null);
+                      }
+                    } catch (error) {
+                      console.error('Error updating idea:', error);
+                    }
+                  }}
+                >
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        
+        {/* Idea Dialog */}
         <IdeaDialog
           isOpen={isNewIdeaDialogOpen}
           onOpenChange={setIsNewIdeaDialogOpen}

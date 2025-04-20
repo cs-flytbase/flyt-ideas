@@ -192,6 +192,14 @@ export default function PostPage() {
             <div className="flex items-center justify-between p-4">
               <h3 className="text-sm font-medium">Comments ({comments.length})</h3>
               
+              <Button 
+                onClick={() => setShowCommentBox(true)}
+                className="rounded-full w-full sm:w-auto border border-muted flex items-center justify-start bg-muted/10 text-muted-foreground text-base sm:text-sm px-4 py-2 sm:px-6 sm:py-2 mb-4 transition-all duration-150"
+                aria-label="Add a comment"
+              >
+                <span className="hidden sm:inline">+ Add a comment</span>
+                <span className="sm:hidden w-full text-center">+ Add comment</span>
+              </Button>
               <div className="relative w-48 md:w-64">
                 <input
                   type="text"
@@ -212,7 +220,7 @@ export default function PostPage() {
                   onChange={(e) => setNewComment(e.target.value)}
                   rows={5}
                   disabled={!user}
-                  className="border-0 focus-visible:ring-0 resize-none text-sm p-3"
+                  className="border-0 focus-visible:ring-0 resize-none text-base sm:text-sm p-3 sm:p-4 w-full"
                   autoFocus
                 />
                 <div className="flex justify-between mt-2">

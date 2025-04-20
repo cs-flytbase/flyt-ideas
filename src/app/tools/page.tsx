@@ -52,6 +52,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ToolsHeader } from "@/components/tools/ToolsHeader";
+import { ToolsSuggestArea } from "@/components/tools/ToolsSuggestArea";
+import { ToolsCategoryFilter } from "@/components/tools/ToolsCategoryFilter";
 
 // Types to match our API responses
 interface Tool {
@@ -275,95 +278,22 @@ const ToolsPage = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-4 sm:space-y-6 px-2 py-3 sm:px-4 sm:py-6 md:px-6 lg:px-8 max-w-7xl mx-auto w-full overflow-visible">
-        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tools Directory</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Discover and share tools that enhance productivity
-            </p>
-          </div>
-          <div className="flex items-center">
-            <button 
-              className="inline-flex h-9 w-full sm:w-auto items-center justify-center rounded-md bg-primary px-2 sm:px-4 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 transition-colors"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              <span>Add Tool</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-card w-full p-2 flex items-center gap-2 shadow-sm border">
-          {/* Icon */}
-          <span className="flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-muted-foreground"
-            >
-              <path d="M8.5 8.5 3 15l8.5 9 8.5-9-5.5-6.5L8.5 2 3 6l5.5 2.5Z" />
-              <path d="M11 13 8.5 8.5 6 13l2.5 3 2.5-3Z" />
-              <path d="M11 13h5.5l2.5-3-2.5-3h-5.5" />
-              <path d="M11 13v6.5" />
-              <path d="M3 6v9" />
-              <path d="M20 6v9" />
-              <path d="M14.5 5 11 3" />
-            </svg>
-          </span>
-          {/* Input */}
-          <input
-            type="text"
-            placeholder="Describe your problem..."
-            className="flex-1 bg-transparent outline-none border-none text-sm sm:text-base px-2 py-2 text-muted-foreground"
-            value={queryText}
-            onChange={(e) => setQueryText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && queryText.trim()) {
-                handleGetSuggestions();
-              }
-            }}
-          />
-          {/* Button */}
-          <button
-            className="rounded-md bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors"
-            onClick={handleGetSuggestions}
-            disabled={suggesting || !queryText.trim()}
-          >
-            {suggesting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
-            ) : null}
-            Get Suggestions
-          </button>
-        </div>
-
-        <div className="py-2 px-1 sm:mx-0 sm:px-0">
-          <h2 className="text-sm font-medium text-muted-foreground mb-2 ml-0.5">Categories</h2>
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 overflow-x-auto pb-1.5 no-scrollbar">
-            {categories.map((category, i) => (
-              <button
-                key={i}
-                className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-                  category === activeCategory
-                    ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/80"
-                    : "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                }`}
-                onClick={() => setActiveCategory(category)}
-                aria-pressed={category === activeCategory}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto w-full space-y-6">
+        <ToolsHeader onAdd={() => setIsModalOpen(true)} />
+        
+        <ToolsSuggestArea
+          queryText={queryText}
+          onQueryChange={setQueryText}
+          onGetSuggestions={handleGetSuggestions}
+          suggesting={suggesting}
+        />
+        
+        <ToolsCategoryFilter
+          categories={categories}
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+        />
+        
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -378,7 +308,7 @@ const ToolsPage = () => {
                   <span className="text-muted-foreground text-sm font-normal ml-2">{tools.length} results</span>
                 </h2>
                 
-                <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {tools.map((tool) => (
                     <ToolCard
                       key={tool.id}
@@ -433,7 +363,7 @@ const ToolsPage = () => {
                 )}
                 
                 {suggestedTools.tools.length > 0 ? (
-                  <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {suggestedTools.tools.map((tool) => (
                       <ToolCard
                         key={tool.id}
@@ -554,7 +484,7 @@ const ToolsPage = () => {
 
       {/* Add Tool Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="w-full p-4 sm:p-6 mx-2 sm:mx-auto sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Add a New Tool</DialogTitle>
             <DialogDescription>
@@ -617,7 +547,7 @@ const ToolsPage = () => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-4 items-start gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
               <Label className="sm:text-right pt-2">
                 Categories
               </Label>

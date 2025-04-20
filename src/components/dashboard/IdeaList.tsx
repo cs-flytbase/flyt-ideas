@@ -95,22 +95,60 @@ export function IdeaList({
               `}
             >
               <div className="flex justify-between mb-1">
-                <h3 className="font-medium text-sm">
-                  <Link href={`/ideas/${idea.id}`} className="hover:underline text-primary">
-                    {idea.title}
-                  </Link>
-                  <Badge variant="outline" className="ml-2 text-[10px] font-normal">{idea.upvotes} upvotes</Badge>
-                </h3>
-                <Badge className="text-[10px] capitalize px-1.5 py-0 h-4 bg-blue-100 text-blue-800 hover:bg-blue-100">
-                  Public
-                </Badge>
+                <div className="flex justify-between items-center w-full">
+                  <div className="flex items-center">
+                    <Link href={`/ideas/${idea.id}`} className="hover:underline text-primary">
+                      {idea.title}
+                    </Link>
+                    <Badge className={`text-[10px] capitalize px-1.5 py-0 h-4 ml-2 ${
+                      idea.status === 'Planning' ? 'bg-yellow-100 text-yellow-800' : 
+                      idea.status === 'In Progress' ? 'bg-green-100 text-green-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {idea.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {idea.is_published ? (
+                      <Button disabled size="sm" className="h-5 px-2 py-0 text-[10px] bg-green-100 text-green-500">
+                        Published
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        className="h-5 px-2 py-0 text-[10px] bg-primary text-black hover:bg-primary/90"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const response = await fetch(`/api/ideas/${idea.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                is_published: true,
+                                published_at: new Date().toISOString()
+                              })
+                            });
+                            if (response.ok) {
+                              onPublishIdea(idea.id, e);
+                            }
+                          } catch (error) {
+                            console.error('Error publishing idea:', error);
+                          }
+                        }}
+                      >
+                        Publish
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground line-clamp-1">{idea.description}</p>
               <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     <Users className="h-3 w-3 text-muted-foreground mr-1" />
-                    <span className="text-xs text-muted-foreground">{idea.upvotes} collaborators</span>
+                    <span className="text-xs text-muted-foreground">{idea.upvotes}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Avatar className="h-4 w-4">
@@ -127,15 +165,7 @@ export function IdeaList({
                     </span>
                   </div>
                 </div>
-                <Badge 
-                  className={`text-[10px] capitalize px-1.5 py-0 h-4 ${
-                    idea.status === 'Planning' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : 
-                    idea.status === 'In Progress' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                    'bg-blue-100 text-blue-800 hover:bg-blue-100'
-                  }`}
-                >
-                  {idea.status}
-                </Badge>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -146,10 +176,21 @@ export function IdeaList({
                     <DropdownMenuItem onClick={(e) => {
                       e.stopPropagation();
                       onEditIdea(idea);
+                      // Add code to trigger edit modal here
                     }}>
                       <Pencil className="h-3.5 w-3.5 mr-2" />
                       <span>Edit Idea</span>
                     </DropdownMenuItem>
+                    {/* Publish Idea option (only if not published) */}
+                    {!idea.is_published && (
+                      <DropdownMenuItem onClick={(e) => {
+                        e.stopPropagation();
+                        onPublishIdea(idea.id, e);
+                      }}>
+                        <EyeIcon className="h-3.5 w-3.5 mr-2" />
+                        <span>Publish Idea</span>
+                      </DropdownMenuItem>
+                    )}
                     <Link 
                       href={`/ideas/${idea.id}`}
                       onClick={(e) => e.stopPropagation()}

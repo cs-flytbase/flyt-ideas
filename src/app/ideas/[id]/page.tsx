@@ -415,14 +415,14 @@ export default function IdeaPage() {
                     Comments
                   </h3>
                   
-                  {!showCommentBox && isUserLoaded && user && (
-                    <Button 
-                      onClick={() => setShowCommentBox(true)}
-                      className="text-sm"
-                    >
-                      Add Comment
-                    </Button>
-                  )}
+                  <Button 
+                    onClick={() => setShowCommentBox(true)}
+                    className="rounded-full w-full sm:w-auto border border-muted flex items-center justify-start bg-muted/10 text-muted-foreground text-base sm:text-sm px-4 py-2 sm:px-6 sm:py-2 transition-all duration-150"
+                    aria-label="Add a comment"
+                  >
+                    <span className="hidden sm:inline">+ Add a comment</span>
+                    <span className="sm:hidden w-full text-center">+ Add comment</span>
+                  </Button>
                 </div>
                 
                 {/* Comment input area */}

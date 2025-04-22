@@ -117,7 +117,7 @@ export function IdeaList({
                     ) : (
                       <Button 
                         size="sm" 
-                        className="h-5 px-2 py-0 text-[10px] bg-primary text-black hover:bg-primary/90"
+                        className="h-5 px-2 py-0 text-[10px] bg-primary text-black hover:bg-primary/90 cursor-pointer"
                         onClick={async (e) => {
                           e.stopPropagation();
                           try {

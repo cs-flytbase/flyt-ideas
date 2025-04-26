@@ -99,7 +99,7 @@ export function IdeaDialog({
             </Label>
             <div className="col-span-3">
               <Select value={status} onValueChange={onStatusChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full">  
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
                 <SelectContent>

@@ -425,15 +425,45 @@ const DashboardPage = () => {
     }
   };
   
-  // Add this function to handle publish state updates
-  const handlePublishIdea = async (ideaId: string) => {
+  // Function to handle publishing an idea
+  const handlePublishIdea = async (ideaId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    
     try {
-      const updatedIdeas = myIdeas.map(idea => 
-        idea.id === ideaId ? { ...idea, is_published: true } : idea
-      );
-      setMyIdeas(updatedIdeas);
+      // Update the database
+      const response = await fetch(`/api/ideas/${ideaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_published: true,
+          published_at: new Date().toISOString()
+        })
+      });
+      
+      if (response.ok) {
+        // Update local state after successful API call
+        const updatedIdeas = myIdeas.map(idea => 
+          idea.id === ideaId ? { ...idea, is_published: true, published_at: new Date().toISOString() } : idea
+        );
+        setMyIdeas(updatedIdeas);
+        toast({ description: "Idea published successfully" });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to publish idea",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error('Error updating local state:', error);
+      console.error('Error publishing idea:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while publishing",
+        variant: "destructive"
+      });
     }
   };
   

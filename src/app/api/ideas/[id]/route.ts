@@ -86,6 +86,8 @@ export async function PATCH(
 
     if ('title' in updates) updateData.title = updates.title;
     if ('description' in updates) updateData.description = updates.description;
+    if ('is_published' in updates) updateData.is_published = updates.is_published;
+    if ('published_at' in updates) updateData.published_at = updates.published_at;
 
     const { data: updated, error: updateError } = await supabase
       .from('ideas')
